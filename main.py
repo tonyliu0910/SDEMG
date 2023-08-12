@@ -36,8 +36,8 @@ def main(args):
         train_num_steps = args.train_steps,         # total training steps
         gradient_accumulate_every = args.gradient_accumulate_every,    # gradient accumulation steps
         ema_decay = args.ema_decay,                # exponential moving average decay
-        amp = args.mix_precision,
-        results_folder = result_path                      # turn on mixed precision
+        amp = args.mix_precision,                  # turn on mixed precision
+        results_folder = result_path                      
     )
 
     trainer.train()
