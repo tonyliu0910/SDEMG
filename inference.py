@@ -9,8 +9,7 @@ from utils import default
 
 def main(args):
     clean_file_path = args.clean_dir
-    result_path = os.path.join(args.result_dir, args.project_name)
-    score_path = os.path.join(result_path, f'{args.project_name}.csv')
+    score_path = os.path.join(args.score_dir, f'{args.project_name}.csv')
     test_path = args.test_dir
 
     dataset = CleanEMGDataset(clean_file_path)
@@ -36,25 +35,21 @@ def main(args):
         train_num_steps = args.train_steps,         # total training steps
         gradient_accumulate_every = args.gradient_accumulate_every,    # gradient accumulation steps
         ema_decay = args.ema_decay,                # exponential moving average decay
-        amp = args.mix_precision,
-        results_folder = result_path                      # turn on mixed precision
-    )
-
-    trainer.train()
-    
+        amp = args.mix_precision,                       # turn on mixed precision
+    )    
     inference_milestone = default(args.inference_milestone, int(args.train_steps / 1000))
     trainer.test(test_path, score_path, milestone=inference_milestone)
 
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='train (or resume training) a DiffWave model')
-    parser.add_argument('--project_name', default='Diffusion_UNet_baseline', help='project name')
+    parser.add_argument('--project_name', default='DiffuEMG_UNet_epochs_optims_loss_batch_lr', help='project name')
     parser.add_argument('--batch_size', default=1, type=int, help='batch size')
     parser.add_argument('--root_dir', default='.', help='root directory for data and model storage')
-    parser.add_argument('--clean_dir', default='/work/t22302856/Tony_data/data_E1_S40_Ch2_withSTI_seg60s_nsrd/train/clean', help='directory containing clean EMG waveforms')
-    parser.add_argument('--test_dir', default='/work/t22302856/Tony_data/data_E1_S40_Ch2_withSTI_seg60s_nsrd/train', help='directory containing noisy EMG waveforms') 
-    parser.add_argument('--result_dir', default='/work/t22302856/Tony_data/EMG_denoise', help='directory to store scores')
-    parser.add_argument('--train_steps', default=10000, type=int, help='number of training steps')
+    parser.add_argument('--clean_dir', default='/home/tony/Bio-ASP/Data/data_E1_S40_withSTI_seg60s_nsrd/train/clean', help='directory containing clean EMG waveforms')
+    parser.add_argument('--test_dir', default='/home/tony/Bio-ASP/Data/data_E2_S40_Ch9_withSTI_seg60s_nsrd/test', help='directory containing noisy EMG waveforms') 
+    parser.add_argument('--score_dir', default='./results', help='directory to store scores')
+    parser.add_argument('--train_steps', default=700000, type=int, help='number of training steps')
     parser.add_argument('--sampling_steps', default=1000, type=int, help='number of sampling steps')
     parser.add_argument('--seq_length', default=60000, type=int, help='length of sequence')
     parser.add_argument('--objective', default='pred_noise', help='diffusion objective')
@@ -62,5 +57,5 @@ if __name__ == '__main__':
     parser.add_argument('--mix_precision', default=True, type=bool, help='turn on mixed precision')
     parser.add_argument('--gradient_accumulate_every', default=2, type=int, help='gradient accumulation steps')
     parser.add_argument('--ema_decay', default=0.995, type=float, help='exponential moving average decay')
-    parser.add_argument('--inference_milestone', default=None, help='select milestone model for inference')
+    parser.add_argument('--inference_milestone', default=None, help='select milestone model for inference' )
     main(parser.parse_args())
