@@ -360,7 +360,7 @@ class GaussianDiffusion1D(nn.Module):
         self.denoise_timesteps = default(denoise_timesteps, self.num_timesteps)
         x_start = None
         # print(img.shape)
-        for t in tqdm(reversed(range(0, self.denoise_timesteps)), desc = 'sampling loop time step', total = self.denoise_timesteps):
+        for t in tqdm(reversed(range(0, self.denoise_timesteps)), desc = 'denoise time step', total = self.denoise_timesteps):
             self_cond = x_start if self.self_condition else None
             img, x_start = self.p_sample(img, t, self_cond)
 

@@ -180,7 +180,7 @@ class Trainer1D(object):
 
         accelerator.print('training complete')
     
-    def write_score(self,test_file,test_path,output=False):   
+    def write_score(self,test_file,test_path,output=False, denoise_timesteps=None):   
         outname  = test_file.replace(f'{test_path}','').replace('/','_')
         c_file = os.path.join(self.test_clean,test_file.split('/')[-1])
         clean = np.load(c_file)
@@ -204,7 +204,7 @@ class Trainer1D(object):
         
         
 
-        pred = self.model.denoise(n_emg)
+        pred = self.model.denoise(n_emg, denoise_timesteps=denoise_timesteps)
         # pred = self.model.sample(batch_size=1)
 
         # if self.inputdim_fix==True:
@@ -237,7 +237,7 @@ class Trainer1D(object):
             check_folder(emg_path)
             np.save(emg_path,enhanced)
 
-    def test(self, test_path, score_path, milestone):
+    def test(self, test_path, score_path, milestone, denoise_timesteps=100):
         # load model
         self.load(milestone)
         self.test_clean = os.path.join(test_path,'clean')
@@ -252,7 +252,7 @@ class Trainer1D(object):
         with open(self.score_path, 'a') as f1:
             f1.write('Filename,SNR,Loss,RMSE,PRD,RMSE_ARV,KR,MF,R2,CC\n')
         for test_file in tqdm(test_folders):
-            self.write_score(test_file,test_path,output=True)
+            self.write_score(test_file,test_path,output=True, denoise_timesteps=denoise_timesteps)
         
         data = pd.read_csv(self.score_path)
         snr_mean = data['SNR'].to_numpy().astype('float').mean()
