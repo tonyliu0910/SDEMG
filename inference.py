@@ -38,7 +38,7 @@ def main(args):
         amp = args.mix_precision,                       # turn on mixed precision
     )    
     inference_milestone = default(args.inference_milestone, int(args.train_steps / 1000))
-    trainer.test(test_path, score_path, milestone=inference_milestone)
+    trainer.test(test_path, score_path, milestone=inference_milestone, denoise_timesteps=args.denoise_timesteps)
 
 
 if __name__ == '__main__':
@@ -57,5 +57,6 @@ if __name__ == '__main__':
     parser.add_argument('--mix_precision', default=True, type=bool, help='turn on mixed precision')
     parser.add_argument('--gradient_accumulate_every', default=2, type=int, help='gradient accumulation steps')
     parser.add_argument('--ema_decay', default=0.995, type=float, help='exponential moving average decay')
-    parser.add_argument('--inference_milestone', default=None, help='select milestone model for inference' )
+    parser.add_argument('--inference_milestone', default=None, help='select milestone model for inference')
+    parser.add_argument('--denoise_timesteps', default=100, type=int, help='denoise step')
     main(parser.parse_args())
