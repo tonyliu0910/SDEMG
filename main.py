@@ -36,7 +36,6 @@ def main(args):
         train_num_steps = args.train_steps,         # total training steps
         gradient_accumulate_every = args.gradient_accumulate_every,    # gradient accumulation steps
         ema_decay = args.ema_decay,                # exponential moving average decay
-<<<<<<< HEAD
         amp = args.mix_precision,
         results_folder = result_path                      # turn on mixed precision
     )
@@ -44,20 +43,11 @@ def main(args):
     trainer.train()
     
     inference_milestone = default(args.inference_milestone, int(args.train_steps / 1000))
-    trainer.test(test_path, score_path, milestone=inference_milestone)
-=======
-        amp = args.mix_precision,                       # turn on mixed precision
-    )    
-
-    trainer.train()
-
-    inference_milestone = default(args.inference_milestone, int(args.train_steps / 1000))
     trainer.test(test_path, score_path, milestone=inference_milestone, denoise_timesteps=args.denoise_timesteps)
->>>>>>> ddd27836b7e42191f0a8760c71a2cc986824feac
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser(description='train (or resume training) a DiffWave model')
+    parser = ArgumentParser(description='train (or resume training) a Diffusion model')
     parser.add_argument('--project_name', default='Diffusion_UNet_baseline', help='project name')
     parser.add_argument('--batch_size', default=1, type=int, help='batch size')
     parser.add_argument('--root_dir', default='.', help='root directory for data and model storage')
@@ -73,8 +63,5 @@ if __name__ == '__main__':
     parser.add_argument('--gradient_accumulate_every', default=2, type=int, help='gradient accumulation steps')
     parser.add_argument('--ema_decay', default=0.995, type=float, help='exponential moving average decay')
     parser.add_argument('--inference_milestone', default=None, help='select milestone model for inference')
-<<<<<<< HEAD
-=======
     parser.add_argument('--denoise_timesteps', default=100, type=int, help='denoise step')
->>>>>>> ddd27836b7e42191f0a8760c71a2cc986824feac
     main(parser.parse_args())
