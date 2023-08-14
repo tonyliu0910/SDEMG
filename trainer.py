@@ -168,12 +168,12 @@ class Trainer1D(object):
 
                         with torch.no_grad():
                             milestone = self.step // self.save_and_sample_every
-                            batches = num_to_groups(self.num_samples, self.batch_size)
-                            all_samples_list = list(map(lambda n: self.ema.ema_model.sample(batch_size=n), batches))
+                            # batches = num_to_groups(self.num_samples, self.batch_size)
+                            # all_samples_list = list(map(lambda n: self.ema.ema_model.sample(batch_size=n), batches))
 
-                        all_samples = torch.cat(all_samples_list, dim = 0)
+                        # all_samples = torch.cat(all_samples_list, dim = 0)
 
-                        torch.save(all_samples, str(self.results_folder / f'sample-{milestone}.png'))
+                        # torch.save(all_samples, str(self.results_folder / f'sample-{milestone}.png'))
                         self.save(milestone)
 
                 pbar.update(1)
@@ -233,7 +233,7 @@ class Trainer1D(object):
             f1.write(f'{outname},{SNR},{loss},{RMSE},{PRD},{RMSE_ARV},{KR},{MF},{R2},{CC}\n')
         
         if output:
-            emg_path = test_file.replace(f'{test_path}',f'./enhanced_data_E2_S40_Ch11_nsrd/{self.out_folder}') 
+            emg_path = test_file.replace(f'{test_path}',f'{self.results_folder}/enhanced_data_E2_S40_Ch11_nsrd/{self.out_folder}') 
             check_folder(emg_path)
             np.save(emg_path,enhanced)
 
