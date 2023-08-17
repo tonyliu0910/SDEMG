@@ -31,12 +31,12 @@ class Trainer1D(object):
         ema_update_every = 10,
         ema_decay = 0.995,
         adam_betas = (0.9, 0.99),
-        save_and_sample_every = 1000,
+        save_and_sample_every = 100,
         num_samples = 25,
         results_folder = './results',
         amp = False,
         mixed_precision_type = 'fp16',
-        split_batches = True,
+        split_batches = True
     ):
         super().__init__()
 
@@ -168,8 +168,8 @@ class Trainer1D(object):
 
                         with torch.no_grad():
                             milestone = self.step // self.save_and_sample_every
-                            # batches = num_to_groups(self.num_samples, self.batch_size)
-                            # all_samples_list = list(map(lambda n: self.ema.ema_model.sample(batch_size=n), batches))
+                        #     batches = num_to_groups(self.num_samples, self.batch_size)
+                        #     all_samples_list = list(map(lambda n: self.ema.ema_model.sample(batch_size=n), batches))
 
                         # all_samples = torch.cat(all_samples_list, dim = 0)
 
@@ -237,7 +237,7 @@ class Trainer1D(object):
             check_folder(emg_path)
             np.save(emg_path,enhanced)
 
-    def test(self, test_path, score_path, milestone, denoise_timesteps=100):
+    def test(self, test_path, score_path, milestone, denoise_timesteps=None):
         # load model
         self.load(milestone)
         self.test_clean = os.path.join(test_path,'clean')

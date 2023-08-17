@@ -1,5 +1,6 @@
 import os
 import math
+from scipy import signal
 
 def check_path(path):
     # Check if path directory exists. If not, create a file directory
@@ -59,3 +60,7 @@ def convert_image_to_fn(img_type, image):
     if image.mode != img_type:
         return image.convert(img_type)
     return image
+
+def resample(x, fs, fs_2):
+    # x needs to be an 1D numpy array
+    return signal.resample(x,int(x.shape[0]/fs * fs_2))

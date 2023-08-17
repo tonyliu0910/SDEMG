@@ -5,6 +5,27 @@ import os
 import numpy as np
 
 
+class EMGDataset(Dataset):
+    def __init__(self, file_path):
+        super().__init__()
+        self.file_path = file_path
+        self.noisy_file_names = glob(os.path.join(self.file_path, 'noisy', '**', '**', "*.npy"), recursive=True)
+        self.clean_file_names = glob(os.path.join(self.file_path, 'clean', "*.npy"), recursive=True)
+
+    def __len__(self):
+        return len(self.noisy_file_names)
+    
+    def __getitem__(self, idx):
+        noisy_file_name = self.noisy_file_names[idx]
+        clean_file_name = os.path.join(self.file_path, 'clean', os.path.basename(noisy_file_name))
+
+        noisy_data = np.load(noisy_file_name)
+        clean_data = np.load(clean_file_name)
+        
+        data = np.vstack((clean_data, noisy_data))
+        return Tensor(data)
+
+        
 class CleanEMGDataset(Dataset):
     def __init__(self, clean_file_path):
         super().__init__()

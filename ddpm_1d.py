@@ -61,7 +61,7 @@ class GaussianDiffusion1D(nn.Module):
         objective = 'pred_noise',
         beta_schedule = 'cosine',
         ddim_sampling_eta = 0.,
-        auto_normalize = False
+        auto_normalize = False,
     ):
         super().__init__()
         self.model = model
@@ -143,6 +143,7 @@ class GaussianDiffusion1D(nn.Module):
 
         self.normalize = normalize_to_neg_one_to_one if auto_normalize else identity
         self.unnormalize = unnormalize_to_zero_to_one if auto_normalize else identity
+
 
     def predict_start_from_noise(self, x_t, t, noise):
         return (
@@ -308,7 +309,7 @@ class GaussianDiffusion1D(nn.Module):
             extract(self.sqrt_one_minus_alphas_cumprod, t, x_start.shape) * noise
         )
 
-    def p_losses(self, x_start, t, noise = None):
+    def p_losses(self, x_start, t, x_self_cond, noise = None):
         b, c, n = x_start.shape
         noise = default(noise, lambda: torch.randn_like(x_start))
 
@@ -320,14 +321,13 @@ class GaussianDiffusion1D(nn.Module):
         # and condition with unet with that
         # this technique will slow down training by 25%, but seems to lower FID significantly
 
-        x_self_cond = None
-        if self.self_condition and random() < 0.5:
-            with torch.no_grad():
-                x_self_cond = self.model_predictions(x, t).pred_x_start
-                x_self_cond.detach_()
+        # x_self_cond = None
+        # if self.self_condition and random() < 0.5:
+        #     with torch.no_grad():
+        #         x_self_cond = self.model_predictions(x, t).pred_x_start
+        #         x_self_cond.detach_()
 
         # predict and take gradient step
-
         model_out = self.model(x, t, x_self_cond)
 
         if self.objective == 'pred_noise':
@@ -351,22 +351,65 @@ class GaussianDiffusion1D(nn.Module):
         assert n == seq_length, f'seq length must be {seq_length}'
         t = torch.randint(0, self.num_timesteps, (b,), device=device).long()
 
-        img = self.normalize(img)
+        if not self.self_condition:
+            img = img[:, :1]
 
-        return self.p_losses(img, t, *args, **kwargs)
+        img = self.normalize(img)
+        
+        if self.self_condition:
+            cond = img[:, 1:]
+            img = img[:, :1]
+
+
+        return self.p_losses(img, t, cond, *args, **kwargs)
     
-    def denoise(self, img, denoise_timesteps = None):
-        batch, device = img.shape[0], self.betas.device
+    @torch.no_grad()
+    def denoise(self, img_noisy, denoise_timesteps = None):
+        batch, device = img_noisy.shape[0], self.betas.device
+        img = torch.randn(img_noisy.shape, device=device)
         self.denoise_timesteps = default(denoise_timesteps, self.num_timesteps)
-        x_start = None
+        x_start = img_noisy
         # print(img.shape)
         for t in tqdm(reversed(range(0, self.denoise_timesteps)), desc = 'denoise time step', total = self.denoise_timesteps):
             self_cond = x_start if self.self_condition else None
             img, x_start = self.p_sample(img, t, self_cond)
 
-        x_start = self.unnormalize(x_start)
-        return x_start
+        img = self.unnormalize(img)
+        return img
 
+    @torch.no_grad()
+    def ddim_denoise(self, img, clip_denoised = True):
+        batch, device, total_timesteps, sampling_timesteps, eta, objective = img.shape[0], self.betas.device, self.num_timesteps, self.sampling_timesteps, self.ddim_sampling_eta, self.objective
+
+        times = torch.linspace(-1, total_timesteps - 1, steps=sampling_timesteps + 1)   # [-1, 0, 1, 2, ..., T-1] when sampling_timesteps == total_timesteps
+        times = list(reversed(times.int().tolist()))
+        time_pairs = list(zip(times[:-1], times[1:])) # [(T-1, T-2), (T-2, T-3), ..., (1, 0), (0, -1)]
+
+        x_start = None
+
+        for time, time_next in tqdm(time_pairs, desc = 'sampling loop time step'):
+            time_cond = torch.full((batch,), time, device=device, dtype=torch.long)
+            self_cond = x_start if self.self_condition else None
+            pred_noise, x_start, *_ = self.model_predictions(img, time_cond, self_cond, clip_x_start = clip_denoised)
+
+            if time_next < 0:
+                img = x_start
+                continue
+
+            alpha = self.alphas_cumprod[time]
+            alpha_next = self.alphas_cumprod[time_next]
+
+            sigma = eta * ((1 - alpha / alpha_next) * (1 - alpha_next) / (1 - alpha)).sqrt()
+            c = (1 - alpha_next - sigma ** 2).sqrt()
+
+            noise = torch.randn_like(img)
+
+            img = x_start * alpha_next.sqrt() + \
+                  c * pred_noise + \
+                  sigma * noise
+
+        img = self.unnormalize(img)
+        return img
 
 # trainer class
 
