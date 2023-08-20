@@ -370,7 +370,7 @@ class GaussianDiffusion1D(nn.Module):
         self.denoise_timesteps = default(denoise_timesteps, self.num_timesteps)
         x_start = img_noisy
         # print(img.shape)
-        for t in tqdm(reversed(range(0, self.denoise_timesteps)), desc = 'denoise time step', total = self.denoise_timesteps):
+        for t in reversed(range(0, self.denoise_timesteps)):
             self_cond = x_start if self.self_condition else None
             img, x_start = self.p_sample(img, t, self_cond)
 
@@ -378,14 +378,15 @@ class GaussianDiffusion1D(nn.Module):
         return img
 
     @torch.no_grad()
-    def ddim_denoise(self, img, clip_denoised = True):
-        batch, device, total_timesteps, sampling_timesteps, eta, objective = img.shape[0], self.betas.device, self.num_timesteps, self.sampling_timesteps, self.ddim_sampling_eta, self.objective
+    def ddim_denoise(self, img_noisy, clip_denoised = True):
+        batch, device, total_timesteps, sampling_timesteps, eta, objective = img_noisy.shape[0], self.betas.device, self.num_timesteps, self.sampling_timesteps, self.ddim_sampling_eta, self.objective
 
         times = torch.linspace(-1, total_timesteps - 1, steps=sampling_timesteps + 1)   # [-1, 0, 1, 2, ..., T-1] when sampling_timesteps == total_timesteps
         times = list(reversed(times.int().tolist()))
         time_pairs = list(zip(times[:-1], times[1:])) # [(T-1, T-2), (T-2, T-3), ..., (1, 0), (0, -1)]
 
-        x_start = None
+        img = torch.randn(img_noisy.shape, device = device)
+        x_start = img_noisy
 
         for time, time_next in tqdm(time_pairs, desc = 'sampling loop time step'):
             time_cond = torch.full((batch,), time, device=device, dtype=torch.long)

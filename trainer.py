@@ -8,6 +8,7 @@ import torch
 from torch import nn
 from torch.optim import Adam
 from torch.utils.data import Dataset, DataLoader
+import torch.nn.functional as F
 
 from accelerate import Accelerator
 from ema_pytorch import EMA
@@ -31,12 +32,13 @@ class Trainer1D(object):
         ema_update_every = 10,
         ema_decay = 0.995,
         adam_betas = (0.9, 0.99),
-        save_and_sample_every = 100,
+        save_and_sample_every = 10000,
         num_samples = 25,
         results_folder = './results',
         amp = False,
         mixed_precision_type = 'fp16',
-        split_batches = True
+        split_batches = True,
+        num_workers = 4
     ):
         super().__init__()
 
@@ -65,7 +67,10 @@ class Trainer1D(object):
 
         # dataset and dataloader
 
-        dl = DataLoader(dataset, batch_size = train_batch_size, shuffle = True, pin_memory = True, num_workers = cpu_count())
+        # dl = DataLoader(dataset, batch_size = train_batch_size, shuffle = True, pin_memory = True, num_workers = cpu_count())
+        self.train_batch_size = train_batch_size
+        self.num_workers = num_workers
+        dl = DataLoader(dataset, batch_size = train_batch_size, shuffle = True, pin_memory = True, num_workers = self.num_workers)
 
         dl = self.accelerator.prepare(dl)
         self.dl = cycle(dl)
@@ -115,7 +120,7 @@ class Trainer1D(object):
 
         data = torch.load(str(self.results_folder / f'model-{milestone}.pt'), map_location=device)
 
-        model = self.accelerator.unwrap_model(self.model)
+        model = self.accelerator.unwrap_model(self.model).to(device)
         model.load_state_dict(data['model'])
 
         self.step = data['step']
@@ -132,7 +137,7 @@ class Trainer1D(object):
     def train(self):
         accelerator = self.accelerator
         device = accelerator.device
-
+        count = 0
         with tqdm(initial = self.step, total = self.train_num_steps, disable = not accelerator.is_main_process) as pbar:
 
             while self.step < self.train_num_steps:
@@ -141,6 +146,7 @@ class Trainer1D(object):
 
                 for _ in range(self.gradient_accumulate_every):
                     data = next(self.dl).to(device)
+                    count = count + 1
 
                     with self.accelerator.autocast():
                         loss = self.model(data)
@@ -177,7 +183,7 @@ class Trainer1D(object):
                         self.save(milestone)
 
                 pbar.update(1)
-
+        accelerator.print(f"total file count: { count}")
         accelerator.print('training complete')
     
     def write_score(self,test_file,test_path,output=False, denoise_timesteps=None):   
@@ -211,7 +217,7 @@ class Trainer1D(object):
         #     pred = pred.view(-1,1).squeeze()
         #     c_emg = c_emg.squeeze()
 
-        criterion = nn.L1Loss()
+        criterion = F.L1Loss()
 
         loss = criterion(pred, c_emg).item()
         pred = pred.cpu().detach().numpy()
@@ -237,35 +243,94 @@ class Trainer1D(object):
             check_folder(emg_path)
             np.save(emg_path,enhanced)
 
-    def test(self, test_path, score_path, milestone, denoise_timesteps=None):
+    def test(self, test_dataset, score_path, milestone, denoise_timesteps=None):
+        accelerator = self.accelerator
+        device = accelerator.device
         # load model
         self.load(milestone)
-        self.test_clean = os.path.join(test_path,'clean')
-        self.test_noisy = os.path.join(test_path,'noisy')
         self.score_path = score_path
         self.out_folder = os.path.join('test',f'milestone_{milestone}')
-        test_folders = get_filepaths(self.test_noisy)
-
         check_folder(self.score_path)
         if os.path.exists(self.score_path):
             os.remove(self.score_path)
-        with open(self.score_path, 'a') as f1:
-            f1.write('Filename,SNR,Loss,RMSE,PRD,RMSE_ARV,KR,MF,R2,CC\n')
-        for test_file in tqdm(test_folders):
-            self.write_score(test_file,test_path,output=True, denoise_timesteps=denoise_timesteps)
         
-        data = pd.read_csv(self.score_path)
-        snr_mean = data['SNR'].to_numpy().astype('float').mean()
-        loss_mean = data['Loss'].to_numpy().astype('float').mean()
-        rmse_mean = data['RMSE'].to_numpy().astype('float').mean()
-        prd_mean = data['PRD'].to_numpy().astype('float').mean()
-        arv_mean = data['RMSE_ARV'].to_numpy().astype('float').mean()
-        kr_mean = data['KR'].to_numpy().astype('float').mean()
-        mf_mean = data['MF'].to_numpy().astype('float').mean()
-        r2_mean = data['R2'].to_numpy().astype('float').mean()
-        cc_mean = data['CC'].to_numpy().astype('float').mean()
-        with open(self.score_path, 'a') as f:
-            f.write(','.join(('Average',str(snr_mean),str(loss_mean),str(rmse_mean),str(prd_mean),str(arv_mean),str(kr_mean),str(mf_mean),str(r2_mean),str(cc_mean)))+'\n')
+        test_dl = DataLoader(test_dataset, batch_size = self.train_batch_size, shuffle = False, pin_memory = True, num_workers = self.num_workers)
+        test_dl = self.accelerator.prepare(test_dl)
+
+        df = pd.DataFrame(index=test_dataset.snr_list, columns=['SNR','loss','rmse','prd','arv','kr', 'r2', 'cc'])
+
+        for col in df.columns:
+            df[col].values[:] = 0
+
+        criterion = nn.MSELoss()
+        count = 0
+        with tqdm(test_dl) as it:
+            for batch_idx, batch in enumerate(it):
+                data_batch = batch[0]
+                snr_batch = batch[1]
+                clean_batch = data_batch[:,:1]
+                noisy_batch = data_batch[:,1:].to(device)
+                # print(f"clean shape {clean_batch.shape}, nosiy shape {noisy_batch.shape}")
+                pred = self.model.denoise(noisy_batch, denoise_timesteps=denoise_timesteps)
+                # print(f"pred shape {pred.shape}")
+                clean_batch = clean_batch.cpu().detach().numpy()
+                pred = pred.cpu().detach().numpy()
+                snr_batch = np.array(snr_batch)
+                for i, (pred_i, clean, snr) in enumerate(zip(pred, clean_batch, snr_batch)):
+                    clean = clean.squeeze().squeeze()
+                    enhanced = pred_i.squeeze().squeeze()
+                    # print(f"clean: {clean.shape}, enhanced: {enhanced.shape}")
+                    loss = criterion(torch.from_numpy(enhanced), torch.from_numpy(clean)).item()
+                    SNR = cal_snr(clean,enhanced)
+                    RMSE = cal_rmse(clean,enhanced)
+                    PRD = cal_prd(clean,enhanced)
+                    RMSE_ARV = cal_rmse(cal_ARV(clean),cal_ARV(enhanced))
+                    KR = abs(cal_KR(clean)-cal_KR(enhanced))
+                    R2 = cal_R2(clean,enhanced)
+                    CC = cal_CC(clean,enhanced)
+                    df.at[snr, 'SNR'] = df.at[snr, 'SNR'] + SNR
+                    df.at[snr, 'loss'] = df.at[snr, 'loss'] + loss
+                    df.at[snr, 'rmse'] = df.at[snr, 'rmse'] + RMSE
+                    df.at[snr, 'prd'] = df.at[snr, 'prd'] + PRD
+                    df.at[snr, 'arv'] = df.at[snr, 'arv'] + RMSE_ARV
+                    df.at[snr, 'kr'] = df.at[snr, 'kr'] + KR
+                    df.at[snr, 'r2'] = df.at[snr, 'r2'] + R2
+                    df.at[snr, 'cc'] = df.at[snr, 'cc'] + CC
+                    count = count + 1
+
+        print(f"Testing done! Test file count: {count}")
+        df=(df/count).round(5)
+        df.to_csv(self.score_path)
+        
+    # def test(self, test_path, score_path, milestone, denoise_timesteps=None):
+    #     # load model
+    #     self.load(milestone)
+    #     self.test_clean = os.path.join(test_path,'clean')
+    #     self.test_noisy = os.path.join(test_path,'noisy')
+    #     self.score_path = score_path
+    #     self.out_folder = os.path.join('test',f'milestone_{milestone}')
+    #     test_folders = get_filepaths(self.test_noisy)
+
+    #     check_folder(self.score_path)
+    #     if os.path.exists(self.score_path):
+    #         os.remove(self.score_path)
+    #     with open(self.score_path, 'a') as f1:
+    #         f1.write('Filename,SNR,Loss,RMSE,PRD,RMSE_ARV,KR,MF,R2,CC\n')
+    #     for test_file in tqdm(test_folders):
+    #         self.write_score(test_file,test_path,output=True, denoise_timesteps=denoise_timesteps)
+        
+    #     data = pd.read_csv(self.score_path)
+    #     snr_mean = data['SNR'].to_numpy().astype('float').mean()
+    #     loss_mean = data['Loss'].to_numpy().astype('float').mean()
+    #     rmse_mean = data['RMSE'].to_numpy().astype('float').mean()
+    #     prd_mean = data['PRD'].to_numpy().astype('float').mean()
+    #     arv_mean = data['RMSE_ARV'].to_numpy().astype('float').mean()
+    #     kr_mean = data['KR'].to_numpy().astype('float').mean()
+    #     mf_mean = data['MF'].to_numpy().astype('float').mean()
+    #     r2_mean = data['R2'].to_numpy().astype('float').mean()
+    #     cc_mean = data['CC'].to_numpy().astype('float').mean()
+    #     with open(self.score_path, 'a') as f:
+    #         f.write(','.join(('Average',str(snr_mean),str(loss_mean),str(rmse_mean),str(prd_mean),str(arv_mean),str(kr_mean),str(mf_mean),str(r2_mean),str(cc_mean)))+'\n')
     
 
         

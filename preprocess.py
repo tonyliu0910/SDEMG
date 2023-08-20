@@ -93,8 +93,9 @@ class EMGdata:
         self.test_exercise = 2
         self.train_channel = [2]
         self.test_channel = [9]
-        self.file_num = len(os.listdir(corpus_path))
-        self.segment = 30 # (sec)
+        self.train_file_num = len(os.listdir(corpus_path))
+        self.test_file_num = 10
+        self.segment = 5 # (sec)
         self.points_per_seg = self.segment * 1000 # fs = 1000 Hz
         self.train_path = train_path
         self.test_path = test_path
@@ -130,10 +131,10 @@ class EMGdata:
     def prepare(self):
         for ch in self.train_channel:
             test=False
-            self.train_path = f"{self.train_path}_E{self.train_exercise}_S{str(self.file_num)}_Ch{str(ch)}_withSTI_seg30s_nsrd"
+            self.train_path = f"{self.train_path}_E{self.train_exercise}_S{str(self.train_file_num)}_Ch{str(ch)}_withSTI_seg{self.segment}s_nsrd"
             check_path(self.train_path)
             check_path(os.path.join(self.train_path,'clean'))
-            file_paths = self.get_emg_filepaths(self.corpus_path, self.file_num, self.train_exercise)
+            file_paths = self.get_emg_filepaths(self.corpus_path, self.train_file_num, self.train_exercise)
             for i in tqdm(range(len(file_paths))):
                 save_path = os.path.join(self.train_path,'clean')
                 emg_file, restimulus = self.read_emg(file_paths[i], ch, test)     
@@ -142,10 +143,10 @@ class EMGdata:
         
         for ch in self.test_channel:
             test=True
-            self.test_path = f"{self.test_path}_E{self.test_exercise}_S{str(self.file_num)}_Ch{str(ch)}_withSTI_seg30s_nsrd"
+            self.test_path = f"{self.test_path}_E{self.test_exercise}_S{str(self.test_file_num)}_Ch{str(ch)}_withSTI_seg{self.segment}s_nsrd"
             check_path(self.test_path)
             check_path(os.path.join(self.test_path,'clean'))
-            file_paths = self.get_emg_filepaths(self.corpus_path, self.file_num, self.test_exercise)
+            file_paths = self.get_emg_filepaths(self.corpus_path, self.test_file_num, self.test_exercise)
             for i in tqdm(range(len(file_paths))):
                 save_path = os.path.join(self.test_path,'clean')
                 emg_file, restimulus = self.read_emg(file_paths[i], ch, test)     
@@ -256,8 +257,8 @@ if __name__ == '__main__':
     ecg_train_path ='/work/bigtony0910/ECG_Ch1_fs1000_bp_training' # for training
     ecg_test_path ='/work/bigtony0910/ECG_Ch1_fs1000_bp_testing' # for testing
 
-    ecg_data = ECGdata(ecg_corpus_path, ecg_train_path, ecg_test_path)
-    ecg_data.prepare()
+    # ecg_data = ECGdata(ecg_corpus_path, ecg_train_path, ecg_test_path)
+    # ecg_data.prepare()
     
     emg_corpus_path = '/work/bigtony0910/EMG_DB2'
     emg_train_path = '/work/bigtony0910/dataset/train'

@@ -11,6 +11,7 @@ class EMGDataset(Dataset):
         self.file_path = file_path
         self.noisy_file_names = glob(os.path.join(self.file_path, 'noisy', '**', '**', "*.npy"), recursive=True)
         self.clean_file_names = glob(os.path.join(self.file_path, 'clean', "*.npy"), recursive=True)
+        self.snr_list = sorted(os.listdir(os.path.join(self.file_path, 'noisy')), key=int, reverse=True)
 
     def __len__(self):
         return len(self.noisy_file_names)
@@ -21,10 +22,32 @@ class EMGDataset(Dataset):
 
         noisy_data = np.load(noisy_file_name)
         clean_data = np.load(clean_file_name)
+        # snr = noisy_file_name.split(os.sep)[-3]
         
         data = np.vstack((clean_data, noisy_data))
         return Tensor(data)
 
+class EMGTestDataset(Dataset):
+    def __init__(self, file_path):
+        super().__init__()
+        self.file_path = file_path
+        self.noisy_file_names = glob(os.path.join(self.file_path, 'noisy', '**', '**', "*.npy"), recursive=True)
+        self.clean_file_names = glob(os.path.join(self.file_path, 'clean', "*.npy"), recursive=True)
+        self.snr_list = sorted(os.listdir(os.path.join(self.file_path, 'noisy')), key=int, reverse=True)
+
+    def __len__(self):
+        return len(self.noisy_file_names)
+    
+    def __getitem__(self, idx):
+        noisy_file_name = self.noisy_file_names[idx]
+        clean_file_name = os.path.join(self.file_path, 'clean', os.path.basename(noisy_file_name))
+
+        noisy_data = np.load(noisy_file_name)
+        clean_data = np.load(clean_file_name)
+        snr = noisy_file_name.split(os.sep)[-3]
+        
+        data = np.vstack((clean_data, noisy_data))
+        return Tensor(data), snr
         
 class CleanEMGDataset(Dataset):
     def __init__(self, clean_file_path):

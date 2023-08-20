@@ -1,24 +1,25 @@
 import os
 from argparse import ArgumentParser
 
-from dataset import CleanEMGDataset
+from dataset import EMGDataset, EMGTestDataset
 from ddpm_1d import GaussianDiffusion1D
 from trainer import Trainer1D
 from model import Unet1D
 from utils import default
 
 def main(args):
-    clean_file_path = args.clean_dir
+    train_path = args.train_dir
     result_path = os.path.join(args.result_dir, args.project_name)
     score_path = os.path.join(result_path, f'{args.project_name}.csv')
     test_path = args.test_dir
-
-    dataset = CleanEMGDataset(clean_file_path)
-
+    
+    dataset = EMGDataset(train_path)
+    # print(f"dataset sample shape: {dataset[0].shape}")
     model = Unet1D(
         dim = 64,
         dim_mults = (1, 2, 4, 8),
-        channels = 1
+        channels = 1,
+        self_condition = True
     )
 
     diffusion = GaussianDiffusion1D(
@@ -36,29 +37,35 @@ def main(args):
         train_num_steps = args.train_steps,         # total training steps
         gradient_accumulate_every = args.gradient_accumulate_every,    # gradient accumulation steps
         ema_decay = args.ema_decay,                # exponential moving average decay
-        amp = args.mix_precision,                    # turn on mixed precision
-        results_folder = result_path                      
-    )    
-    inference_milestone = default(args.inference_milestone, int(args.train_steps / 1000))
-    trainer.test(test_path, score_path, milestone=inference_milestone, denoise_timesteps=args.denoise_timesteps)
+        amp = args.mix_precision,
+        results_folder = result_path,                      # turn on mixed precision
+        num_workers = args.num_workers
+    )
+    
+    inference_milestone = default(args.inference_milestone, int(args.train_steps / 10000))
+
+    test_dataset = EMGTestDataset(test_path)
+
+    trainer.test(test_dataset, score_path, milestone=inference_milestone, denoise_timesteps=args.denoise_timesteps)
 
 
 if __name__ == '__main__':
-    parser = ArgumentParser(description='train (or resume training) a DiffWave model')
-    parser.add_argument('--project_name', default='DiffuEMG_UNet_epochs_optims_loss_batch_lr', help='project name')
-    parser.add_argument('--batch_size', default=1, type=int, help='batch size')
+    parser = ArgumentParser(description='train (or resume training) a Diffusion model')
+    parser.add_argument('--project_name', default='Condition_UNet_10sec_TS10k_SS100_test', help='project name')
+    parser.add_argument('--batch_size', default=64, type=int, help='batch size')
     parser.add_argument('--root_dir', default='.', help='root directory for data and model storage')
-    parser.add_argument('--clean_dir', default='/work/bigtony0910/data_E1_S40_withSTI_seg60s_nsrd/train/clean', help='directory containing clean EMG waveforms')
-    parser.add_argument('--test_dir', default='/work/bigtony0910/data_E2_S40_Ch9_withSTI_seg60s_nsrd/test', help='directory containing noisy EMG waveforms') 
+    parser.add_argument('--train_dir', default='/work/bigtony0910/dataset/train_E1_S40_Ch2_withSTI_seg10s_nsrd', help='directory containing training EMG waveforms')
+    parser.add_argument('--test_dir', default='/work/bigtony0910/dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd', help='directory containing testing EMG waveforms') 
     parser.add_argument('--result_dir', default='/work/bigtony0910/result', help='directory to store scores')
-    parser.add_argument('--train_steps', default=700000, type=int, help='number of training steps')
-    parser.add_argument('--sampling_steps', default=1000, type=int, help='number of sampling steps')
-    parser.add_argument('--seq_length', default=60000, type=int, help='length of sequence')
+    parser.add_argument('--train_steps', default=10000, type=int, help='number of training steps')
+    parser.add_argument('--sampling_steps', default=100, type=int, help='number of sampling steps')
+    parser.add_argument('--seq_length', default=10000, type=int, help='length of sequence')
     parser.add_argument('--objective', default='pred_noise', help='diffusion objective')
     parser.add_argument('--lr', default=8e-5, type=float, help='learning rate')
     parser.add_argument('--mix_precision', default=True, type=bool, help='turn on mixed precision')
     parser.add_argument('--gradient_accumulate_every', default=2, type=int, help='gradient accumulation steps')
     parser.add_argument('--ema_decay', default=0.995, type=float, help='exponential moving average decay')
     parser.add_argument('--inference_milestone', default=None, help='select milestone model for inference')
-    parser.add_argument('--denoise_timesteps', default=100, type=int, help='denoise step')
+    parser.add_argument('--denoise_timesteps', default=None, type=int, help='denoise step')
+    parser.add_argument('--num_workers', default=4, type=int, help='number of workers')
     main(parser.parse_args())
