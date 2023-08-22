@@ -62,6 +62,7 @@ class GaussianDiffusion1D(nn.Module):
         beta_schedule = 'cosine',
         ddim_sampling_eta = 0.,
         auto_normalize = False,
+        loss_function = 'l1'
     ):
         super().__init__()
         self.model = model
@@ -144,6 +145,7 @@ class GaussianDiffusion1D(nn.Module):
         self.normalize = normalize_to_neg_one_to_one if auto_normalize else identity
         self.unnormalize = unnormalize_to_zero_to_one if auto_normalize else identity
 
+        self.loss_function = loss_function
 
     def predict_start_from_noise(self, x_t, t, noise):
         return (
@@ -339,8 +341,10 @@ class GaussianDiffusion1D(nn.Module):
             target = v
         else:
             raise ValueError(f'unknown objective {self.objective}')
-
-        loss = F.mse_loss(model_out, target, reduction = 'none')
+        if self.loss_function == 'l1':
+            loss = F.l1_loss(model_out, target, reduction = 'none')
+        elif self.loss_function == 'l2':
+            loss = F.mse_loss(model_out, target, reduction = 'none')
         loss = reduce(loss, 'b ... -> b (...)', 'mean')
 
         loss = loss * extract(self.loss_weight, t, loss.shape)

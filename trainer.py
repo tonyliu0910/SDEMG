@@ -9,6 +9,7 @@ from torch import nn
 from torch.optim import Adam
 from torch.utils.data import Dataset, DataLoader
 import torch.nn.functional as F
+from torch import Tensor
 
 from accelerate import Accelerator
 from ema_pytorch import EMA
@@ -16,7 +17,8 @@ from tqdm.auto import tqdm
 
 from ddpm_1d import GaussianDiffusion1D
 from score import cal_snr, cal_rmse, cal_ARV, cal_CC, cal_KR, cal_MF, cal_prd, cal_R2
-from utils import check_folder, get_filepaths, exists, has_int_squareroot, cycle, num_to_groups
+from utils import check_folder, get_filepaths, exists, has_int_squareroot, cycle, num_to_groups, check_path
+import matplotlib.pyplot as plt
 
 
 class Trainer1D(object):
@@ -146,7 +148,7 @@ class Trainer1D(object):
 
                 for _ in range(self.gradient_accumulate_every):
                     data = next(self.dl).to(device)
-                    count = count + 1
+                    # count = count + 1
 
                     with self.accelerator.autocast():
                         loss = self.model(data)
@@ -183,73 +185,16 @@ class Trainer1D(object):
                         self.save(milestone)
 
                 pbar.update(1)
-        accelerator.print(f"total file count: { count}")
+        # accelerator.print(f"total file count: { count}")
         accelerator.print('training complete')
-    
-    def write_score(self,test_file,test_path,output=False, denoise_timesteps=None):   
-        outname  = test_file.replace(f'{test_path}','').replace('/','_')
-        c_file = os.path.join(self.test_clean,test_file.split('/')[-1])
-        clean = np.load(c_file)
-        stimulus = np.load(c_file.replace('.npy','_sti.npy'))
-        noisy = np.load(test_file)
-        # print(f"loading noisy file from {test_file}")
-        # if self.args.STFT:
-        #     n_emg,n_phase,n_len = make_spectrum(y = noisy)
-        #     n_emg = torch.from_numpy(noisy).t()
-        #     c_emg = make_spectrum(y = clean)[0]
-        #     n_emg = torch.from_numpy(noisy).to(self.device).unsqueeze(0).type(torch.float32)
-        #     c_emg = torch.from_numpy(c_emg).t().to(self.device).unsqueeze(0).type(torch.float32)
-        # else: 
-        #     n_emg = torch.from_numpy(noisy).to(self.device).unsqueeze(0).type(torch.float32)
-        #     c_emg = torch.from_numpy(clean).to(self.device).unsqueeze(0).type(torch.float32)
-        n_emg = torch.from_numpy(noisy).to(self.device).unsqueeze(0).unsqueeze(0).type(torch.float32)
-        c_emg = torch.from_numpy(clean).to(self.device).unsqueeze(0).unsqueeze(0).type(torch.float32)
-        # if self.inputdim_fix==True:
-        #     n_emg = F.pad(n_emg,(0,2000-n_emg.shape[1]%2000)).view(-1,2000)
-        #     c_emg = F.pad(c_emg,(0,2000-c_emg.shape[1]%2000))
-        
-        
 
-        pred = self.model.denoise(n_emg, denoise_timesteps=denoise_timesteps)
-        # pred = self.model.sample(batch_size=1)
-
-        # if self.inputdim_fix==True:
-        #     pred = pred.view(-1,1).squeeze()
-        #     c_emg = c_emg.squeeze()
-
-        criterion = F.L1Loss()
-
-        loss = criterion(pred, c_emg).item()
-        pred = pred.cpu().detach().numpy()
-        enhanced = pred.squeeze().squeeze()
-            
-        
-
-        # Evaluation metrics
-        SNR = cal_snr(clean,enhanced)
-        RMSE = cal_rmse(clean,enhanced)
-        PRD = cal_prd(clean,enhanced)
-        RMSE_ARV = cal_rmse(cal_ARV(clean),cal_ARV(enhanced))
-        KR = abs(cal_KR(clean)-cal_KR(enhanced))
-        MF = cal_rmse(cal_MF(clean,stimulus),cal_MF(enhanced,stimulus))
-        R2 = cal_R2(clean,enhanced)
-        CC = cal_CC(clean,enhanced)
-        
-        with open(self.score_path, 'a') as f1:
-            f1.write(f'{outname},{SNR},{loss},{RMSE},{PRD},{RMSE_ARV},{KR},{MF},{R2},{CC}\n')
-        
-        if output:
-            emg_path = test_file.replace(f'{test_path}',f'{self.results_folder}/enhanced_data_E2_S40_Ch11_nsrd/{self.out_folder}') 
-            check_folder(emg_path)
-            np.save(emg_path,enhanced)
-
-    def test(self, test_dataset, score_path, milestone, denoise_timesteps=None):
+    def test(self, test_dataset, score_path, milestone, ddim, denoise_timesteps=None):
         accelerator = self.accelerator
         device = accelerator.device
         # load model
         self.load(milestone)
         self.score_path = score_path
-        self.out_folder = os.path.join('test',f'milestone_{milestone}')
+        
         check_folder(self.score_path)
         if os.path.exists(self.score_path):
             os.remove(self.score_path)
@@ -257,13 +202,19 @@ class Trainer1D(object):
         test_dl = DataLoader(test_dataset, batch_size = self.train_batch_size, shuffle = False, pin_memory = True, num_workers = self.num_workers)
         test_dl = self.accelerator.prepare(test_dl)
 
-        df = pd.DataFrame(index=test_dataset.snr_list, columns=['SNR','loss','rmse','prd','arv','kr', 'r2', 'cc'])
+        snr_list = test_dataset.snr_list
+
+        df = pd.DataFrame(index=test_dataset.snr_list, columns=['SNR','loss','rmse','prd','arv','kr', 'r2', 'cc', 'file_count'])
 
         for col in df.columns:
             df[col].values[:] = 0
-
-        criterion = nn.MSELoss()
+        if self.model.loss_function == 'l1':
+            criterion = nn.L1Loss()
+        elif self.model.loss_function == 'l2':
+            criterion = nn.MSELoss()
         count = 0
+
+
         with tqdm(test_dl) as it:
             for batch_idx, batch in enumerate(it):
                 data_batch = batch[0]
@@ -271,7 +222,10 @@ class Trainer1D(object):
                 clean_batch = data_batch[:,:1]
                 noisy_batch = data_batch[:,1:].to(device)
                 # print(f"clean shape {clean_batch.shape}, nosiy shape {noisy_batch.shape}")
-                pred = self.model.denoise(noisy_batch, denoise_timesteps=denoise_timesteps)
+                if ddim:
+                    pred = self.model.ddim_denoise(noisy_batch)
+                else:
+                    pred = self.model.denoise(noisy_batch, denoise_timesteps=denoise_timesteps)
                 # print(f"pred shape {pred.shape}")
                 clean_batch = clean_batch.cpu().detach().numpy()
                 pred = pred.cpu().detach().numpy()
@@ -296,43 +250,48 @@ class Trainer1D(object):
                     df.at[snr, 'kr'] = df.at[snr, 'kr'] + KR
                     df.at[snr, 'r2'] = df.at[snr, 'r2'] + R2
                     df.at[snr, 'cc'] = df.at[snr, 'cc'] + CC
-                    count = count + 1
+                    df.at[snr, 'file_count'] = df.at[snr, 'file_count'] + 1
 
-        print(f"Testing done! Test file count: {count}")
-        df=(df/count).round(5)
+        # print(f"Testing done! Test file count: {count}")
+        for col in df.columns[:8]:
+            df[col].values[:] = df[col].values[:]/df['file_count'].values[:]
+        df = df.round(5)
         df.to_csv(self.score_path)
-        
-    # def test(self, test_path, score_path, milestone, denoise_timesteps=None):
-    #     # load model
-    #     self.load(milestone)
-    #     self.test_clean = os.path.join(test_path,'clean')
-    #     self.test_noisy = os.path.join(test_path,'noisy')
-    #     self.score_path = score_path
-    #     self.out_folder = os.path.join('test',f'milestone_{milestone}')
-    #     test_folders = get_filepaths(self.test_noisy)
 
-    #     check_folder(self.score_path)
-    #     if os.path.exists(self.score_path):
-    #         os.remove(self.score_path)
-    #     with open(self.score_path, 'a') as f1:
-    #         f1.write('Filename,SNR,Loss,RMSE,PRD,RMSE_ARV,KR,MF,R2,CC\n')
-    #     for test_file in tqdm(test_folders):
-    #         self.write_score(test_file,test_path,output=True, denoise_timesteps=denoise_timesteps)
+    def denoise_sample(self, file_paths, milestone, ddim, denoise_timesteps=None):
+        accelerator = self.accelerator
+        device = accelerator.device
+        self.out_folder = os.path.join(self.results_folder, f'milestone_{milestone}_enhanced')
+        check_path(self.out_folder)
         
-    #     data = pd.read_csv(self.score_path)
-    #     snr_mean = data['SNR'].to_numpy().astype('float').mean()
-    #     loss_mean = data['Loss'].to_numpy().astype('float').mean()
-    #     rmse_mean = data['RMSE'].to_numpy().astype('float').mean()
-    #     prd_mean = data['PRD'].to_numpy().astype('float').mean()
-    #     arv_mean = data['RMSE_ARV'].to_numpy().astype('float').mean()
-    #     kr_mean = data['KR'].to_numpy().astype('float').mean()
-    #     mf_mean = data['MF'].to_numpy().astype('float').mean()
-    #     r2_mean = data['R2'].to_numpy().astype('float').mean()
-    #     cc_mean = data['CC'].to_numpy().astype('float').mean()
-    #     with open(self.score_path, 'a') as f:
-    #         f.write(','.join(('Average',str(snr_mean),str(loss_mean),str(rmse_mean),str(prd_mean),str(arv_mean),str(kr_mean),str(mf_mean),str(r2_mean),str(cc_mean)))+'\n')
-    
-
+        # load model
+        self.load(milestone)
         
+        # load data
 
-    #     return 
+        for filepath in file_paths:
+            filename = os.path.basename(filepath)
+            clean_file_name = os.path.join(*filepath.split(os.sep)[:5])
+            clean_file_name = os.path.join('/'+clean_file_name, 'clean', filename)
+            snr = filepath.split(os.sep)[-3]
+            clean_data = np.load(clean_file_name)
+            noisy_data = np.load(filepath)
+            noisy_tensor = Tensor(noisy_data).unsqueeze(0).unsqueeze(0).to(device)
+            if ddim:
+                pred = self.model.ddim_denoise(noisy_tensor)
+            else:
+                pred = self.model.denoise(noisy_tensor, denoise_timesteps=denoise_timesteps)
+            pred = pred.cpu().detach().numpy().squeeze().squeeze()
+            
+            np.save(os.path.join(self.out_folder, f"snr_{snr}_{filename}"), pred)
+            fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15,3))
+            ax[0].plot(clean_data)
+            ax[0].set_title("clean")
+            ax[1].plot(noisy_data)
+            ax[1].set_title("noisy")
+            ax[2].plot(pred)
+            ax[2].set_title("denoised")
+            fig.suptitle(f"SNR: {snr}, filename: {filename}")
+            fig.savefig(os.path.join(self.out_folder, f"snr_{snr}_{filename}.png"))
+            print(f"denoised file {filename} saved to {self.out_folder}")
+        
