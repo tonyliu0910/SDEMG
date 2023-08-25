@@ -19,6 +19,7 @@ from ddpm_1d import GaussianDiffusion1D
 from score import cal_snr, cal_rmse, cal_ARV, cal_CC, cal_KR, cal_MF, cal_prd, cal_R2
 from utils import check_folder, get_filepaths, exists, has_int_squareroot, cycle, num_to_groups, check_path
 import matplotlib.pyplot as plt
+from accelerate import DistributedDataParallelKwargs
 
 
 class Trainer1D(object):
@@ -27,10 +28,10 @@ class Trainer1D(object):
         diffusion_model: GaussianDiffusion1D,
         dataset: Dataset,
         *,
+        train_epochs = 50,
         train_batch_size = 16,
         gradient_accumulate_every = 1,
         train_lr = 1e-4,
-        train_num_steps = 100000,
         ema_update_every = 10,
         ema_decay = 0.995,
         adam_betas = (0.9, 0.99),
@@ -45,10 +46,12 @@ class Trainer1D(object):
         super().__init__()
 
         # accelerator
-
+        ddp_kwargs = DistributedDataParallelKwargs(find_unused_parameters=True)
+        # accelerator = Accelerator(kwargs_handlers=[ddp_kwargs])
         self.accelerator = Accelerator(
             split_batches = split_batches,
-            mixed_precision = mixed_precision_type if amp else 'no'
+            mixed_precision = mixed_precision_type if amp else 'no',
+            kwargs_handlers=[ddp_kwargs]
         )
 
         # model
@@ -62,10 +65,9 @@ class Trainer1D(object):
         self.num_samples = num_samples
         self.save_and_sample_every = save_and_sample_every
 
+        self.train_epochs = train_epochs
         self.batch_size = train_batch_size
         self.gradient_accumulate_every = gradient_accumulate_every
-
-        self.train_num_steps = train_num_steps
 
         # dataset and dataloader
 
@@ -74,8 +76,8 @@ class Trainer1D(object):
         self.num_workers = num_workers
         dl = DataLoader(dataset, batch_size = train_batch_size, shuffle = True, pin_memory = True, num_workers = self.num_workers)
 
-        dl = self.accelerator.prepare(dl)
-        self.dl = cycle(dl)
+        self.dl = self.accelerator.prepare(dl)
+        # self.dl = cycle(dl)
 
         # optimizer
 
@@ -122,7 +124,7 @@ class Trainer1D(object):
 
         data = torch.load(str(self.results_folder / f'model-{milestone}.pt'), map_location=device)
 
-        model = self.accelerator.unwrap_model(self.model).to(device)
+        model = self.accelerator.unwrap_model(self.model)
         model.load_state_dict(data['model'])
 
         self.step = data['step']
@@ -139,52 +141,37 @@ class Trainer1D(object):
     def train(self):
         accelerator = self.accelerator
         device = accelerator.device
-        count = 0
-        with tqdm(initial = self.step, total = self.train_num_steps, disable = not accelerator.is_main_process) as pbar:
 
-            while self.step < self.train_num_steps:
-
+        for epoch in range(self.train_epochs):
+            accelerator.print(f"eppoch: {epoch}")
+            # with tqdm(initial = 0, total = len(list(self.dl)), disable = not accelerator.is_main_process) as pbar:
+            with tqdm(self.dl) as it:
                 total_loss = 0.
 
-                for _ in range(self.gradient_accumulate_every):
-                    data = next(self.dl).to(device)
-                    # count = count + 1
-
+                for batch_idx, data in enumerate(it):
+                    data = data.to(device)
                     with self.accelerator.autocast():
                         loss = self.model(data)
-                        loss = loss / self.gradient_accumulate_every
-                        total_loss += loss.item()
+                        total_loss += loss
+                    
+                    accelerator.backward(loss)
+                
+                    accelerator.clip_grad_norm_(self.model.parameters(), 1.0)
+                    it.set_description(f'loss: {loss:.4f}')
 
-                    self.accelerator.backward(loss)
+                    accelerator.wait_for_everyone()
+                    
+                    self.opt.step()
+                    self.opt.zero_grad()
 
-                accelerator.clip_grad_norm_(self.model.parameters(), 1.0)
-                pbar.set_description(f'loss: {total_loss:.4f}')
-
-                accelerator.wait_for_everyone()
-
-                self.opt.step()
-                self.opt.zero_grad()
-
-                accelerator.wait_for_everyone()
-
-                self.step += 1
+                    accelerator.wait_for_everyone()
+                
                 if accelerator.is_main_process:
                     self.ema.update()
-
-                    if self.step != 0 and self.step % self.save_and_sample_every == 0:
-                        self.ema.ema_model.eval()
-
-                        with torch.no_grad():
-                            milestone = self.step // self.save_and_sample_every
-                        #     batches = num_to_groups(self.num_samples, self.batch_size)
-                        #     all_samples_list = list(map(lambda n: self.ema.ema_model.sample(batch_size=n), batches))
-
-                        # all_samples = torch.cat(all_samples_list, dim = 0)
-
-                        # torch.save(all_samples, str(self.results_folder / f'sample-{milestone}.png'))
-                        self.save(milestone)
-
-                pbar.update(1)
+                    self.ema.ema_model.eval()
+                    self.save(epoch)
+                # it.update(1)
+            
         # accelerator.print(f"total file count: { count}")
         accelerator.print('training complete')
 
@@ -261,37 +248,80 @@ class Trainer1D(object):
     def denoise_sample(self, file_paths, milestone, ddim, denoise_timesteps=None):
         accelerator = self.accelerator
         device = accelerator.device
-        self.out_folder = os.path.join(self.results_folder, f'milestone_{milestone}_enhanced')
-        check_path(self.out_folder)
-        
-        # load model
-        self.load(milestone)
-        
-        # load data
 
-        for filepath in file_paths:
-            filename = os.path.basename(filepath)
-            clean_file_name = os.path.join(*filepath.split(os.sep)[:5])
-            clean_file_name = os.path.join('/'+clean_file_name, 'clean', filename)
-            snr = filepath.split(os.sep)[-3]
-            clean_data = np.load(clean_file_name)
-            noisy_data = np.load(filepath)
-            noisy_tensor = Tensor(noisy_data).unsqueeze(0).unsqueeze(0).to(device)
-            if ddim:
-                pred = self.model.ddim_denoise(noisy_tensor)
-            else:
-                pred = self.model.denoise(noisy_tensor, denoise_timesteps=denoise_timesteps)
-            pred = pred.cpu().detach().numpy().squeeze().squeeze()
+        if accelerator.is_main_process:   
+            self.out_folder = os.path.join(self.results_folder, f'milestone_{milestone}_enhanced')
+            check_path(self.out_folder)
+            # load model
+            self.load(milestone)
+            # load data
             
-            np.save(os.path.join(self.out_folder, f"snr_{snr}_{filename}"), pred)
-            fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15,3))
-            ax[0].plot(clean_data)
-            ax[0].set_title("clean")
-            ax[1].plot(noisy_data)
-            ax[1].set_title("noisy")
-            ax[2].plot(pred)
-            ax[2].set_title("denoised")
-            fig.suptitle(f"SNR: {snr}, filename: {filename}")
-            fig.savefig(os.path.join(self.out_folder, f"snr_{snr}_{filename}.png"))
-            print(f"denoised file {filename} saved to {self.out_folder}")
+            
+            ts = np.arange(0, self.model.num_timesteps+20, 10)
+            fig, ax = plt.subplots(nrows=ts.shape[0], ncols=4, figsize=(20, 3*ts.shape[0]))
+            fig.tight_layout()
+
+            for idx, denoise_ts in enumerate(ts):
+                for i, filepath in enumerate(file_paths):
+                    filename = os.path.basename(filepath)
+                    clean_file_name = os.path.join(*filepath.split(os.sep)[:6])
+                    clean_file_name = os.path.join('/'+clean_file_name, 'clean', filename)
+                    snr = filepath.split(os.sep)[-3]
+                    clean_data = np.load(clean_file_name)
+                    noisy_data = np.load(filepath)
+                    if idx == 0:
+                        ax[idx, i].plot(clean_data)
+                        ax[idx, i].set_title(f"clean")
+                        ax[idx, i].set_ylim(-1, 1)
+                        ax[idx, i].set_xlim(0, 5000)
+                    elif idx == len(ts) - 1:
+                        ax[idx, i].plot(noisy_data)
+                        ax[idx, i].set_title(f"noisy {snr}")
+                        ax[idx, i].set_ylim(-1, 1)
+                        ax[idx, i].set_xlim(0, 5000)
+                    else: 
+                        noisy_tensor = Tensor(noisy_data).unsqueeze(0).unsqueeze(0).to(device)
+                        if ddim:
+                            pred = self.model.ddim_denoise(noisy_tensor, denoise_timesteps=denoise_ts)
+                        else:
+                            pred = self.model.denoise(noisy_tensor, denoise_timesteps=denoise_ts)
+                        pred = pred.cpu().detach().numpy().squeeze().squeeze()
+                        ax[idx, i].plot(pred)
+                        if i == 0:
+                            ax[idx, i].set_title(f"denoise_timesteps: {denoise_ts} snr: {snr}")
+                        else:
+                            ax[idx, i].set_title(f"snr: {snr}")
+                        ax[idx, i].set_ylim(-1, 1)
+                        ax[idx, i].set_xlim(0, 5000)
+                        print(f"step {denoise_ts} snr {snr} sample done!")
+            fig.savefig(os.path.join(self.out_folder, f"denoise_ts_samples.png"))
+            print(f"denoise_ts_samples saved to {self.out_folder}")
+
+
+
+        # for filepath in file_paths:
+        #     filename = os.path.basename(filepath)
+        #     clean_file_name = os.path.join(*filepath.split(os.sep)[:5])
+        #     clean_file_name = os.path.join('/'+clean_file_name, 'clean', filename)
+        #     snr = filepath.split(os.sep)[-3]
+        #     clean_data = np.load(clean_file_name)
+        #     noisy_data = np.load(filepath)
+        #     noisy_tensor = Tensor(noisy_data).unsqueeze(0).unsqueeze(0).to(device)
+        #     if ddim:
+        #         pred = self.model.ddim_denoise(noisy_tensor)
+        #     else:
+        #         pred = self.model.denoise(noisy_tensor, denoise_timesteps=denoise_timesteps)
+        #     pred = pred.cpu().detach().numpy().squeeze().squeeze()
+            
+        #     np.save(os.path.join(self.out_folder, f"snr_{snr}_{filename}"), pred)
+        #     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15,3))
+        #     ax[0].plot(clean_data)
+        #     ax[0].set_title("clean")
+        #     ax[1].plot(noisy_data)
+        #     ax[1].set_title("noisy")
+        #     ax[2].plot(pred)
+        #     ax[2].set_title("denoised")
+        #     fig.suptitle(f"SNR: {snr}, filename: {filename}")
+        #     fig.savefig(os.path.join(self.out_folder, f"snr_{snr}_{filename}.png"))
+        #     print(f"denoised file {filename} saved to {self.out_folder}")
         
