@@ -26,7 +26,8 @@ class Trainer1D(object):
     def __init__(
         self,
         diffusion_model: GaussianDiffusion1D,
-        dataset: Dataset,
+        train_dataset: Dataset,
+        validation_dataset: Dataset,
         *,
         train_epochs = 50,
         train_batch_size = 16,
@@ -73,10 +74,13 @@ class Trainer1D(object):
 
         # dl = DataLoader(dataset, batch_size = train_batch_size, shuffle = True, pin_memory = True, num_workers = cpu_count())
         self.train_batch_size = train_batch_size
-        self.num_workers = num_workers
-        dl = DataLoader(dataset, batch_size = train_batch_size, shuffle = True, pin_memory = True, num_workers = self.num_workers)
+        # self.num_workers = num_workers
+        self.num_workers = cpu_count() / 2
+        train_dl = DataLoader(train_dataset, batch_size = train_batch_size, shuffle = True, pin_memory = True, num_workers = self.num_workers)
+        valid_dl = DataLoader(validation_dataset, batch_size = train_batch_size, shuffle = False, pin_memory = True, num_workers = self.num_workers)
 
-        self.dl = self.accelerator.prepare(dl)
+        self.train_dl = self.accelerator.prepare(train_dl)
+        self.valid_dl = self.accelerator.prepare(valid_dl)
         # self.dl = cycle(dl)
 
         # optimizer
@@ -98,7 +102,9 @@ class Trainer1D(object):
 
         # prepare model, dataloader, optimizer with accelerator
 
-        self.model, self.opt = self.accelerator.prepare(self.model, self.opt)
+        self.lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.opt, factor=0.3, patience=3, verbose=True)
+
+        self.model, self.opt= self.accelerator.prepare(self.model, self.opt)
 
     @property
     def device(self):
@@ -141,18 +147,21 @@ class Trainer1D(object):
     def train(self):
         accelerator = self.accelerator
         device = accelerator.device
+        
+        best_loss = 100000.
 
         for epoch in range(self.train_epochs):
-            accelerator.print(f"eppoch: {epoch}")
+            accelerator.print(f"Train epoch: {epoch}")
             # with tqdm(initial = 0, total = len(list(self.dl)), disable = not accelerator.is_main_process) as pbar:
-            with tqdm(self.dl) as it:
+            with tqdm(self.train_dl) as it:
                 total_loss = 0.
 
-                for batch_idx, data in enumerate(it):
-                    data = data.to(device)
+                for batch_idx, (clean_batch, noisy_batch) in enumerate(it):
+                    # print(clean_batch.shape, noisy_batch.shape)
+                    clean_batch, noisy_batch = clean_batch.to(device), noisy_batch.to(device)
                     with self.accelerator.autocast():
-                        loss = self.model(data)
-                        total_loss += loss
+                        loss = self.model(clean_batch, noisy_batch)
+                        total_loss += loss.item()
                     
                     accelerator.backward(loss)
                 
@@ -165,12 +174,28 @@ class Trainer1D(object):
                     self.opt.zero_grad()
 
                     accelerator.wait_for_everyone()
-                
-                if accelerator.is_main_process:
-                    self.ema.update()
-                    self.ema.ema_model.eval()
-                    self.save(epoch)
-                # it.update(1)
+            accelerator.print(f"Train loss: {total_loss/len(self.train_dl):.4f}")
+            
+            accelerator.print(f"Validation epoch: {epoch}")
+            with tqdm(self.valid_dl) as it:
+                total_loss = 0.
+                for batch_idx, (clean_batch, noisy_batch) in enumerate(it):
+                    clean_batch, noisy_batch = clean_batch.to(device), noisy_batch.to(device)
+                    with self.accelerator.autocast():
+                        loss = self.model(clean_batch, noisy_batch)
+                        total_loss += loss.item()
+                    it.set_description(f'loss: {loss:.4f}')
+                    accelerator.wait_for_everyone()
+            valid_loss = total_loss/len(self.valid_dl)
+            self.lr_scheduler.step(valid_loss)
+            accelerator.wait_for_everyone()
+            accelerator.print(f"Validation loss: {valid_loss:.4f}")
+            if valid_loss < best_loss and accelerator.is_main_process:
+                self.ema.update()
+                self.ema.ema_model.eval()
+                self.save('best')
+                best_loss = valid_loss
+                accelerator.print(f"New best model saved at epoch {epoch} with loss {valid_loss:.4f}")
             
         # accelerator.print(f"total file count: { count}")
         accelerator.print('training complete')
@@ -203,11 +228,11 @@ class Trainer1D(object):
 
 
         with tqdm(test_dl) as it:
-            for batch_idx, batch in enumerate(it):
-                data_batch = batch[0]
-                snr_batch = batch[1]
-                clean_batch = data_batch[:,:1]
-                noisy_batch = data_batch[:,1:].to(device)
+            for batch_idx, (clean_batch, noisy_batch, snr_batch) in enumerate(it):
+                # data_batch = batch[0]
+                # snr_batch = batch[1]
+                # clean_batch = data_batch[:,:1]
+                # noisy_batch = data_batch[:,1:].to(device)
                 # print(f"clean shape {clean_batch.shape}, nosiy shape {noisy_batch.shape}")
                 if ddim:
                     pred = self.model.ddim_denoise(noisy_batch)
@@ -255,7 +280,32 @@ class Trainer1D(object):
             # load model
             self.load(milestone)
             # load data
-            
+            # ts = np.arange(0, 100, 1)
+            # fig, ax = plt.subplots(nrows=10, ncols=10, figsize =(50, 30))
+            # fig.tight_layout()
+            # file_path = file_paths[0]
+            # filename = os.path.basename(file_path)
+            # clean_file_name = os.path.join(*file_path.split(os.sep)[:6])
+            # clean_file_name = os.path.join('/'+clean_file_name, 'clean', filename)
+            # clean_data = np.load(clean_file_name)
+            # noisy_data = np.load(file_path)
+            # noisy_tensor = Tensor(noisy_data).unsqueeze(0).unsqueeze(0).to(device)
+            # for idx, denoise_ts in enumerate(ts):
+            #     row = idx // 10
+            #     col = idx % 10
+            #     if ddim:
+            #         pred = self.model.ddim_denoise(noisy_tensor, denoise_timesteps=denoise_ts)
+            #     else:
+            #         pred = self.model.denoise(noisy_tensor, denoise_timesteps=denoise_ts)
+            #     pred = pred.cpu().detach().numpy().squeeze().squeeze()
+            #     ax[row, col].plot(pred)
+            #     ax[row, col].set_title(f"denoise_timesteps: {denoise_ts}")
+            #     ax[row, col].set_ylim(-1, 1)
+            #     ax[row, col].set_xlim(0, 5000)
+            #     print(f"step {denoise_ts} sample done!")
+            # fig.savefig(os.path.join(self.out_folder, f"denoise_ts_samples.png"))
+            # print(f"denoise_ts_samples saved to {self.out_folder}")
+
             
             ts = np.arange(0, self.model.num_timesteps+20, 10)
             fig, ax = plt.subplots(nrows=ts.shape[0], ncols=4, figsize=(20, 3*ts.shape[0]))
@@ -294,7 +344,7 @@ class Trainer1D(object):
                         ax[idx, i].set_ylim(-1, 1)
                         ax[idx, i].set_xlim(0, 5000)
                         print(f"step {denoise_ts} snr {snr} sample done!")
-            fig.savefig(os.path.join(self.out_folder, f"denoise_ts_samples.png"))
+            fig.savefig(os.path.join(self.out_folder, f"denoise_ts_snr_samples.png"))
             print(f"denoise_ts_samples saved to {self.out_folder}")
 
 

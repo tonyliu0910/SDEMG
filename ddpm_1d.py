@@ -51,6 +51,10 @@ def cosine_beta_schedule(timesteps, s = 0.008):
     betas = 1 - (alphas_cumprod[1:] / alphas_cumprod[:-1])
     return torch.clip(betas, 0, 0.999)
 
+def quadratic_beta_schedule(timesteps, start=1e-4, end=5e-1):
+    betas = torch.linspace(start ** 0.5, end ** 0.5, n_timesteps) ** 2
+    return betas
+
 class GaussianDiffusion1D(nn.Module):
     def __init__(
         self,
@@ -60,7 +64,7 @@ class GaussianDiffusion1D(nn.Module):
         timesteps = 1000,
         sampling_timesteps = None,
         objective = 'pred_noise',
-        beta_schedule = 'linear',
+        beta_schedule = 'quad',
         ddim_sampling_eta = 0.,
         auto_normalize = False,
         loss_function = 'l1',
@@ -81,15 +85,17 @@ class GaussianDiffusion1D(nn.Module):
             betas = linear_beta_schedule(timesteps)
         elif beta_schedule == 'cosine':
             betas = cosine_beta_schedule(timesteps)
+        elif beta_schedule == 'quad':
+            betas = quadratic_beta_schedule(timesteps)
         else:
             raise ValueError(f'unknown beta schedule {beta_schedule}')
 
         alphas = 1. - betas
         alphas_cumprod = torch.cumprod(alphas, dim=0)
         alphas_cumprod_prev = F.pad(alphas_cumprod[:-1], (1, 0), value = 1.)
-        self.sqrt_alphas_cumprod_prev = np.sqrt(
-            np.append(1., alphas_cumprod))
-        timesteps, = betas.shape
+        self.sqrt_alphas_cumprod_prev = np.sqrt(np.append(1., alphas_cumprod))
+
+        timesteps = betas.shape[0]
         self.num_timesteps = int(timesteps)
 
         # sampling related parameters
@@ -148,7 +154,14 @@ class GaussianDiffusion1D(nn.Module):
         self.normalize = normalize_to_neg_one_to_one if auto_normalize else identity
         self.unnormalize = unnormalize_to_zero_to_one if auto_normalize else identity
 
-        self.loss_function = loss_function
+        
+        if loss_function not in {'l1', 'l2'}:
+            raise ValueError(f'unknown loss function {loss_function}')
+        elif loss_function == 'l1':
+            self.loss_function = nn.L1Loss()
+        elif loss_function == 'l2':
+            self.loss_function = nn.MSELoss()
+        
 
     def predict_start_from_noise(self, x_t, t, noise):
         return (
@@ -185,8 +198,10 @@ class GaussianDiffusion1D(nn.Module):
 
     def model_predictions(self, x, t, x_self_cond = None, clip_x_start = False, rederive_pred_noise = False):
         batch_size = x.shape[0]
+
         noise_level = torch.FloatTensor(
             [self.sqrt_alphas_cumprod_prev[t.cpu().numpy()+1]]).repeat(batch_size, 1).to(x.device)
+
         model_output = self.model(x, noise_level, x_self_cond)
         # model_output = self.model(x, t, x_self_cond)
         maybe_clip = partial(torch.clamp, min = -1., max = 1.) if clip_x_start else identity
@@ -311,15 +326,25 @@ class GaussianDiffusion1D(nn.Module):
         return img
 
     @autocast(enabled = False)
-    def q_sample(self, x_start, t, noise=None):
+    def q_sample(self, x_start, continuous_sqrt_alpha_cumprod, noise=None):
+        # print(x_start.shape)
+        # print(continuous_sqrt_alpha_cumprod.shape)
+        # print(noise.shape)
         noise = default(noise, lambda: torch.randn_like(x_start))
 
-        return (
-            extract(self.sqrt_alphas_cumprod, t, x_start.shape) * x_start +
-            extract(self.sqrt_one_minus_alphas_cumprod, t, x_start.shape) * noise
-        )
+        # random gama
+        return (continuous_sqrt_alpha_cumprod * x_start + (1 - continuous_sqrt_alpha_cumprod**2).sqrt() * noise)
+    # def q_sample(self, x_start, t, noise=None):
+    #     noise = default(noise, lambda: torch.randn_like(x_start))
+
+    #     return (
+    #         extract(self.sqrt_alphas_cumprod, t, x_start.shape) * x_start +
+    #         extract(self.sqrt_one_minus_alphas_cumprod, t, x_start.shape) * noise
+    #     )
+
 
     def p_losses(self, x_start, t, x_self_cond, noise = None):
+        # print(x_start.shape)
         b, c, n = x_start.shape
         noise = default(noise, lambda: torch.randn_like(x_start))
         continuous_sqrt_alpha_cumprod = torch.FloatTensor(
@@ -329,21 +354,13 @@ class GaussianDiffusion1D(nn.Module):
                 size=b
             )
         ).to(x_start.device)
-        continuous_sqrt_alpha_cumprod = continuous_sqrt_alpha_cumprod.view(b, -1)
+        continuous_sqrt_alpha_cumprod = continuous_sqrt_alpha_cumprod.view(b, -1).unsqueeze(1)
+        # print(continuous_sqrt_alpha_cumprod.shape)
         # noise sample
 
-        x = self.q_sample(x_start = x_start, t = t, noise = noise)
-
-        # if doing self-conditioning, 50% of the time, predict x_start from current set of times
-        # and condition with unet with that
-        # this technique will slow down training by 25%, but seems to lower FID significantly
-
-        # x_self_cond = None
-        # if self.self_condition and random() < 0.5:
-        #     with torch.no_grad():
-        #         x_self_cond = self.model_predictions(x, t).pred_x_start
-        #         x_self_cond.detach_()
-
+        # x = self.q_sample(x_start = x_start, t = t, noise = noise)
+        x = self.q_sample(x_start = x_start, continuous_sqrt_alpha_cumprod=continuous_sqrt_alpha_cumprod, noise = noise)
+        # print(x.shape)
         # predict and take gradient step
         # model_out = self.model(x, t, x_self_cond)
         model_out = self.model(x, continuous_sqrt_alpha_cumprod, x_self_cond)
@@ -356,43 +373,36 @@ class GaussianDiffusion1D(nn.Module):
             target = v
         else:
             raise ValueError(f'unknown objective {self.objective}')
-        if self.loss_function == 'l1':
-            loss = F.l1_loss(model_out, target, reduction = 'none')
-        elif self.loss_function == 'l2':
-            loss = F.mse_loss(model_out, target, reduction = 'none')
-        loss = reduce(loss, 'b ... -> b (...)', 'mean')
 
-        loss = loss * extract(self.loss_weight, t, loss.shape)
-        return loss.mean()
+        self.loss_function = self.loss_function.to(x.device)
+        loss = self.loss_function(model_out, target)
+        return loss
 
-    def forward(self, img):
-        b, c, n, device, seq_length, = *img.shape, img.device, self.seq_length
+    def forward(self, clean_img, noisy_img):
+        b, c, n, device, seq_length, = *clean_img.shape, clean_img.device, self.seq_length
         assert n == seq_length, f'seq length must be {seq_length}'
         t = torch.randint(0, self.num_timesteps, (b,), device=device).long()
         # t = np.random.randint(1, self.num_timesteps + 1, (b,)) 
         
         if not self.self_condition:
-            img = img[:, :1]
+            cond = None
+        else:
+            cond = noisy_img
 
-        img = self.normalize(img)
-        cond = None
-        if self.self_condition:
-            cond = img[:, 1:]
-            img = img[:, :1]
-
-
-        return self.p_losses(img, t, cond)
+        clean_img = self.normalize(clean_img)
+        cond = self.normalize(cond)
+        return self.p_losses(clean_img, t, cond)
     
     @torch.no_grad()
     def denoise(self, img_noisy, denoise_timesteps = None):
         batch, device = img_noisy.shape[0], self.betas.device
         img = torch.randn(img_noisy.shape, device=device)
         self.denoise_timesteps = default(denoise_timesteps, self.num_timesteps)
-        x_start = img_noisy
+        cond = img_noisy if self.self_condition else None
+        x_start = None
         # print(img.shape)
         for t in reversed(range(0, self.denoise_timesteps)):
-            self_cond = x_start if self.self_condition else None
-            img, x_start = self.p_sample(img, t, self_cond)
+            img, x_start = self.p_sample(img, t, cond)
 
         img = self.unnormalize(img)
         return img

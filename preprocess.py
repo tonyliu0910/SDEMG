@@ -8,18 +8,21 @@ import scipy
 import math
 import random
 import csv
+import scipy.io
 
 from utils import check_path, resample, get_filepaths
 
 
 
 class ECGdata:
-    def __init__(self, corpus_path, train_path, test_path):
+    def __init__(self, corpus_path, train_path, valid_path, test_path):
         self.corpus_path = corpus_path
         self.train_path = train_path
         self.test_path = test_path
+        self.valid_path = valid_path
         check_path(self.train_path)
         check_path(self.test_path)
+        check_path(self.valid_path)
 
         self.ecg_id =[]
         for f in os.listdir(self.corpus_path):
@@ -28,21 +31,37 @@ class ECGdata:
                 self.ecg_id.append(f)
 
         self.ecg_id = sorted(list(set(self.ecg_id)))
-
+        print("Total ECG files: ", len(self.ecg_id))
         self.train_id = []
+        self.valid_id = []
         self.test_id = []
+
         self.train_file = []
         self.test_file = []
+        self.valid_file = []
 
-        rand_list = np.random.randint(0, len(self.ecg_id)-1, int(len(self.ecg_id) / 5))
+        self.train_file_num = 12
+        self.test_file_num = 3
+        self.valid_file_num = 3
 
+        rand_list = random.sample(range(len(self.ecg_id)), self.test_file_num+self.valid_file_num)
+        print(rand_list)
         for idx, id in enumerate(self.ecg_id):
+            print(idx, id)
             if idx in rand_list:
-                self.test_id.append(id)
-                self.test_file.append(os.path.join(self.corpus_path, str(id)))
+                if len(self.test_id) < self.test_file_num:
+                    self.test_id.append(id)
+                    self.test_file.append(os.path.join(self.corpus_path, str(id)))
+                else:
+                    self.valid_id.append(id)
+                    self.valid_file.append(os.path.join(self.corpus_path, str(id)))
             else:
                 self.train_id.append(id)
                 self.train_file.append(os.path.join(self.corpus_path, str(id)))
+
+        print("training set: ", len(self.train_id))
+        print("validation set: ", len(self.valid_id))
+        print("testing set: ", len(self.test_id))
 
     def read_ecg(self, ecg_path):
         ecg = wfdb.rdrecord(ecg_path).__dict__.get('p_signal')[:,0] # channel 1 ECG
@@ -71,6 +90,20 @@ class ECGdata:
             else:
                 ecg_file = sig.filtfilt(b_l, a_l, sig.filtfilt(b_h, a_h, ecg_file[start:end]))
                 np.save(os.path.join(self.train_path, os.path.basename(file_path).split(".")[0]), ecg_file)
+        
+        print("validation set ecg:")
+        print(self.valid_id)
+
+        for i in tqdm(range(len(self.valid_file))):
+            file_path = self.valid_file[i]
+            ecg_file = self.read_ecg(file_path)
+            if ecg_file.ndim>1:
+                for j in range(ecg_file.shape[1]):
+                    ecg_save = sig.filtfilt(b_l, a_l, sig.filtfilt(h_h, a_h, ecg_file[start:end, j]))
+                    np.save(os.path.join(self.valid_path, os.path.basename(file_path).split(".")[0] + str(j)), ecg_save)
+            else:
+                ecg_file = sig.filtfilt(b_l, a_l, sig.filtfilt(b_h, a_h, ecg_file[start:end]))
+                np.save(os.path.join(self.valid_path, os.path.basename(file_path).split(".")[0]), ecg_file)
             
         print("testing set ecg:")
         print(self.test_id)
@@ -87,23 +120,37 @@ class ECGdata:
                 np.save(os.path.join(self.test_path, os.path.basename(file_path).split(".")[0]), ecg_file)
 
 class EMGdata:
-    def __init__(self, corpus_path, train_path, test_path, train_noise_signal, test_noise_signal):
+    def __init__(self, corpus_path, train_path, valid_path, test_path, train_noise_signal, valid_noise_signal, test_noise_signal):
         self.corpus_path = corpus_path
         self.train_exercise = 1
+        self.valid_exercise = 3
         self.test_exercise = 2
+
         self.train_channel = [2]
+        self.valid_channel = [2]
         self.test_channel = [9]
+
         self.train_file_num = len(os.listdir(corpus_path))
+        self.valid_file_num = 10
         self.test_file_num = 10
-        self.segment = 5 # (sec)
+
+        self.segment = 10 # (sec)
         self.points_per_seg = self.segment * 1000 # fs = 1000 Hz
+
         self.train_path = train_path
+        self.valid_path = valid_path
         self.test_path = test_path
+
         self.train_snr_list = [-5,-7,-9,-11,-13,-15]
+        self.valid_snr_list = [-5,-7,-9,-11,-13,-15]
         self.test_snr_list = [0,-2,-4,-6,-8,-10,-12,-14]
+
         self.train_num_of_copy = 10
+        self.valid_num_of_copy = 3
         self.test_num_of_copy = 3
+
         self.train_noise_signal = train_noise_signal
+        self.valid_noise_signal = valid_noise_signal
         self.test_noise_signal = test_noise_signal
 
     def get_emg_filepaths(self, directory, number, exercise):
@@ -141,6 +188,20 @@ class EMGdata:
                 for j in range(emg_file.shape[0]//self.points_per_seg):
                     np.save(os.path.join(save_path, file_paths[i].split(os.sep)[-1].split(".")[0]+"_ch"+str(ch)+"_"+str(j)), emg_file[j*self.points_per_seg:(j+1)*self.points_per_seg])
         
+        for ch in self.valid_channel:
+            test=False
+            self.valid_path = f"{self.valid_path}_E{self.valid_exercise}_S{str(self.valid_file_num)}_Ch{str(ch)}_withSTI_seg{self.segment}s_nsrd"
+            check_path(self.valid_path)
+            check_path(os.path.join(self.valid_path,'clean'))
+            file_paths = self.get_emg_filepaths(self.corpus_path, self.valid_file_num, self.valid_exercise)
+            for i in tqdm(range(len(file_paths))):
+                save_path = os.path.join(self.valid_path,'clean')
+                emg_file, restimulus = self.read_emg(file_paths[i], ch, test)     
+                for j in range(emg_file.shape[0]//self.points_per_seg):
+                    np.save(os.path.join(save_path, file_paths[i].split(os.sep)[-1].split(".")[0]+"_ch"+str(ch)+"_"+str(j)), emg_file[j*self.points_per_seg:(j+1)*self.points_per_seg])
+                    if test:
+                        np.save(os.path.join(save_path,file_paths[i].split(os.sep)[-1].split(".")[0]+"_ch"+str(ch)+"_"+str(j)+"_sti"), restimulus[j*self.points_per_seg:(j+1)*self.points_per_seg])
+
         for ch in self.test_channel:
             test=True
             self.test_path = f"{self.test_path}_E{self.test_exercise}_S{str(self.test_file_num)}_Ch{str(ch)}_withSTI_seg{self.segment}s_nsrd"
@@ -226,6 +287,28 @@ class EMGdata:
                             np.save(os.path.join(output_dir, emg_name), y_noisy)
                             writer.writerow({'EMG': emg_name, 'ECG': noise_name, 'start': info['start'], 'end': info['end'], 'scalar': info['scalar']})
 
+        valid_noisy_path = os.path.join(self.valid_path, 'noisy')
+        valid_clean_path = os.path.join(self.valid_path, 'clean')
+        for ch in self.train_channel:
+            clean_list = self.get_filepaths_withSTI(valid_clean_path, '.npy')
+            noise_list = get_filepaths(self.valid_noise_signal)
+            sorted(clean_list)
+            for snr in self.valid_snr_list:
+                with open(valid_noisy_path+str(snr)+'.csv', 'w', newline='') as csvFile:
+                    fieldNames = ['EMG', 'ECG', 'start', 'end', 'scalar']
+                    writer = csv.DictWriter(csvFile, fieldnames=fieldNames)
+                    writer.writeheader()
+                    for clean_emg_path in tqdm(clean_list):
+                        noise_wav_path_list = random.sample(noise_list, self.valid_num_of_copy)
+                        for noise_ecg_path in noise_wav_path_list:
+                            y_noisy, clean_rate, info = self.add_noise(clean_emg_path, noise_ecg_path, snr, return_info=True, normalize=False)
+                            noise_name = os.path.basename(noise_ecg_path).split(".")[0]
+                            output_dir = os.path.join(valid_noisy_path, str(snr), noise_name)
+                            check_path(output_dir)
+                            emg_name = os.path.basename(clean_emg_path).split(".")[0]
+                            np.save(os.path.join(output_dir, emg_name), y_noisy)
+                            writer.writerow({'EMG': emg_name, 'ECG': noise_name, 'start': info['start'], 'end': info['end'], 'scalar': info['scalar']})
+
         test_noisy_path = os.path.join(self.test_path, 'noisy')
         test_clean_path = os.path.join(self.test_path, 'clean')
         for ch in self.test_channel:
@@ -253,16 +336,18 @@ class EMGdata:
 
 
 if __name__ == '__main__':
-    ecg_corpus_path = '/work/bigtony0910/mit-bih-normal-sinus-rhythm-database-1.0.0'
-    ecg_train_path ='/work/bigtony0910/ECG_Ch1_fs1000_bp_training' # for training
-    ecg_test_path ='/work/bigtony0910/ECG_Ch1_fs1000_bp_testing' # for testing
+    ecg_corpus_path = '/work/t22302856/Tony_data/mit-bih-normal-sinus-rhythm-database-1.0.0'
+    ecg_train_path ='/work/t22302856/Tony_data/ECG_Ch1_fs1000_bp_training' # for training
+    ecg_valid_path = '/work/t22302856/Tony_data/ECG_Ch1_fs1000_bp_validation' # for validation
+    ecg_test_path ='/work/t22302856/Tony_data/ECG_Ch1_fs1000_bp_testing' # for testing
 
-    # ecg_data = ECGdata(ecg_corpus_path, ecg_train_path, ecg_test_path)
-    # ecg_data.prepare()
+    ecg_data = ECGdata(ecg_corpus_path, ecg_train_path, ecg_valid_path, ecg_test_path)
+    ecg_data.prepare()
     
-    emg_corpus_path = '/work/bigtony0910/EMG_DB2'
-    emg_train_path = '/work/bigtony0910/dataset/train'
-    emg_test_path = '/work/bigtony0910/dataset/test'
-    emg_data = EMGdata(emg_corpus_path, emg_train_path, emg_test_path, ecg_train_path, ecg_test_path)
+    emg_corpus_path = '/work/t22302856/Tony_data/EMG_DB2'
+    emg_train_path = '/work/t22302856/Tony_data/sEMG_Dataset/train'
+    emg_valid_path = '/work/t22302856/Tony_data/sEMG_Dataset/valid'
+    emg_test_path = '/work/t22302856/Tony_data/sEMG_Dataset/test'
+    emg_data = EMGdata(emg_corpus_path, emg_train_path, emg_valid_path, emg_test_path, ecg_train_path, ecg_valid_path, ecg_test_path)
     emg_data.prepare()
     emg_data.mixture()
