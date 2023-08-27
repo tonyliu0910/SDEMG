@@ -52,7 +52,7 @@ def cosine_beta_schedule(timesteps, s = 0.008):
     return torch.clip(betas, 0, 0.999)
 
 def quadratic_beta_schedule(timesteps, start=1e-4, end=5e-1):
-    betas = torch.linspace(start ** 0.5, end ** 0.5, n_timesteps) ** 2
+    betas = torch.linspace(start ** 0.5, end ** 0.5, timesteps) ** 2
     return betas
 
 class GaussianDiffusion1D(nn.Module):
