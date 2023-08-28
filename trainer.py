@@ -220,10 +220,12 @@ class Trainer1D(object):
 
         for col in df.columns:
             df[col].values[:] = 0
-        if self.model.loss_function == 'l1':
-            criterion = nn.L1Loss()
-        elif self.model.loss_function == 'l2':
-            criterion = nn.MSELoss()
+
+        # if self.model.loss_function == 'l1':
+        #     criterion = nn.L1Loss()
+        # elif self.model.loss_function == 'l2':
+        #     criterion = nn.MSELoss()
+        criterion = self.model.loss_function
         count = 0
 
 
@@ -234,6 +236,7 @@ class Trainer1D(object):
                 # clean_batch = data_batch[:,:1]
                 # noisy_batch = data_batch[:,1:].to(device)
                 # print(f"clean shape {clean_batch.shape}, nosiy shape {noisy_batch.shape}")
+                # print(clean_batch.shape, noisy_batch.shape)
                 if ddim:
                     pred = self.model.ddim_denoise(noisy_batch)
                 else:

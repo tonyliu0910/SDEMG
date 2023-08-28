@@ -198,10 +198,7 @@ class GaussianDiffusion1D(nn.Module):
 
     def model_predictions(self, x, t, x_self_cond = None, clip_x_start = False, rederive_pred_noise = False):
         batch_size = x.shape[0]
-
-        noise_level = torch.FloatTensor(
-            [self.sqrt_alphas_cumprod_prev[t.cpu().numpy()+1]]).repeat(batch_size, 1).to(x.device)
-
+        noise_level = torch.FloatTensor(self.sqrt_alphas_cumprod_prev[t.cpu().numpy()+1]).reshape(batch_size, 1).to(x.device)
         model_output = self.model(x, noise_level, x_self_cond)
         # model_output = self.model(x, t, x_self_cond)
         maybe_clip = partial(torch.clamp, min = -1., max = 1.) if clip_x_start else identity
