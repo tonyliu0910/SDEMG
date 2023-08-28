@@ -51,14 +51,14 @@ def main(args):
         num_workers = args.num_workers
     )
 
-    trainer.train()
+    # trainer.train()
     
     inference_milestone = default(args.inference_milestone, args.train_epochs-1)
 
     # test_dataset = EMGTestDataset(test_path)
     # trainer.test(test_dataset, score_path, milestone=inference_milestone, ddim=args.ddim, denoise_timesteps=args.denoise_timesteps)
 
-    #currently 5s
+    #currently 10s
     file_paths = ['/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/0/16420/S1_E2_A1_ch9_3.npy',
                    '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-4/16420/S1_E2_A1_ch9_3.npy',
                    '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-8/16420/S1_E2_A1_ch9_3.npy',

@@ -285,11 +285,12 @@ class Trainer1D(object):
             fig.tight_layout()
             file_path = file_paths[0]
             filename = os.path.basename(file_path)
-            clean_file_name = os.path.join(*file_path.split(os.sep)[:6])
+            clean_file_name = os.path.join(*file_path.split(os.sep)[:-4])
             clean_file_name = os.path.join('/'+clean_file_name, 'clean', filename)
             clean_data = np.load(clean_file_name)
             noisy_data = np.load(file_path)
             noisy_tensor = Tensor(noisy_data).unsqueeze(0).unsqueeze(0).to(device)
+            snr = file_path.split(os.sep)[-3]
             for idx, denoise_ts in enumerate(ts):
                 row = idx // 10
                 col = idx % 10
@@ -298,10 +299,12 @@ class Trainer1D(object):
                 else:
                     pred = self.model.denoise(noisy_tensor, denoise_timesteps=denoise_ts)
                 pred = pred.cpu().detach().numpy().squeeze().squeeze()
+                denoised_snr = cal_snr(clean_data, pred)
+                denoised_rmse = cal_rmse(clean_data, pred)
                 ax[row, col].plot(pred)
-                ax[row, col].set_title(f"denoise_timesteps: {denoise_ts}")
+                ax[row, col].set_title(f"TS: {denoise_ts} SNRimp{denoised_snr - int(snr)} RMSE: {denoised_rmse}")
                 ax[row, col].set_ylim(-1, 1)
-                ax[row, col].set_xlim(0, 5000)
+                ax[row, col].set_xlim(0, 10000)
                 print(f"step {denoise_ts} sample done!")
             fig.savefig(os.path.join(self.out_folder, f"denoise_ts_samples.png"))
             print(f"denoise_ts_samples saved to {self.out_folder}")
@@ -314,7 +317,7 @@ class Trainer1D(object):
             for idx, denoise_ts in enumerate(ts):
                 for i, filepath in enumerate(file_paths):
                     filename = os.path.basename(filepath)
-                    clean_file_name = os.path.join(*filepath.split(os.sep)[:6])
+                    clean_file_name = os.path.join(*filepath.split(os.sep)[:-4])
                     clean_file_name = os.path.join('/'+clean_file_name, 'clean', filename)
                     snr = filepath.split(os.sep)[-3]
                     clean_data = np.load(clean_file_name)
@@ -323,12 +326,12 @@ class Trainer1D(object):
                         ax[idx, i].plot(clean_data)
                         ax[idx, i].set_title(f"clean")
                         ax[idx, i].set_ylim(-1, 1)
-                        ax[idx, i].set_xlim(0, 5000)
+                        ax[idx, i].set_xlim(0, 10000)
                     elif idx == len(ts) - 1:
                         ax[idx, i].plot(noisy_data)
                         ax[idx, i].set_title(f"noisy {snr}")
                         ax[idx, i].set_ylim(-1, 1)
-                        ax[idx, i].set_xlim(0, 5000)
+                        ax[idx, i].set_xlim(0, 10000)
                     else: 
                         noisy_tensor = Tensor(noisy_data).unsqueeze(0).unsqueeze(0).to(device)
                         if ddim:
@@ -336,42 +339,53 @@ class Trainer1D(object):
                         else:
                             pred = self.model.denoise(noisy_tensor, denoise_timesteps=denoise_ts)
                         pred = pred.cpu().detach().numpy().squeeze().squeeze()
+                        denoised_snr = cal_snr(clean_data, pred)
+                        denoised_rmse = cal_rmse(clean_data, pred)
                         ax[idx, i].plot(pred)
                         if i == 0:
-                            ax[idx, i].set_title(f"denoise_timesteps: {denoise_ts} snr: {snr}")
+                            ax[idx, i].set_title(f"TS: {denoise_ts} SNR: {denoised_snr} RMSE: {denoised_rmse}")
                         else:
-                            ax[idx, i].set_title(f"snr: {snr}")
+                            ax[idx, i].set_title(f"SNR: {denoised_snr} RMSE: {denoised_rmse}")
                         ax[idx, i].set_ylim(-1, 1)
-                        ax[idx, i].set_xlim(0, 5000)
+                        ax[idx, i].set_xlim(0, 10000)
                         print(f"step {denoise_ts} snr {snr} sample done!")
             fig.savefig(os.path.join(self.out_folder, f"denoise_ts_snr_samples.png"))
             print(f"denoise_ts_samples saved to {self.out_folder}")
 
-
-
-        # for filepath in file_paths:
-        #     filename = os.path.basename(filepath)
-        #     clean_file_name = os.path.join(*filepath.split(os.sep)[:5])
-        #     clean_file_name = os.path.join('/'+clean_file_name, 'clean', filename)
-        #     snr = filepath.split(os.sep)[-3]
-        #     clean_data = np.load(clean_file_name)
-        #     noisy_data = np.load(filepath)
-        #     noisy_tensor = Tensor(noisy_data).unsqueeze(0).unsqueeze(0).to(device)
-        #     if ddim:
-        #         pred = self.model.ddim_denoise(noisy_tensor)
-        #     else:
-        #         pred = self.model.denoise(noisy_tensor, denoise_timesteps=denoise_timesteps)
-        #     pred = pred.cpu().detach().numpy().squeeze().squeeze()
+            file_num = len(file_paths)
+            fig, ax = plt.subplots(nrows=file_num, ncols=3, figsize=(3*5, 3*file_num))
+            fig.tight_layout()
             
-        #     np.save(os.path.join(self.out_folder, f"snr_{snr}_{filename}"), pred)
-        #     fig, ax = plt.subplots(nrows=1, ncols=3, figsize=(15,3))
-        #     ax[0].plot(clean_data)
-        #     ax[0].set_title("clean")
-        #     ax[1].plot(noisy_data)
-        #     ax[1].set_title("noisy")
-        #     ax[2].plot(pred)
-        #     ax[2].set_title("denoised")
-        #     fig.suptitle(f"SNR: {snr}, filename: {filename}")
-        #     fig.savefig(os.path.join(self.out_folder, f"snr_{snr}_{filename}.png"))
-        #     print(f"denoised file {filename} saved to {self.out_folder}")
+            for idx, filepath in enumerate(file_paths):
+                filename = os.path.basename(filepath)
+                clean_file_name = os.path.join(*filepath.split(os.sep)[:-4])
+                clean_file_name = os.path.join('/'+clean_file_name, 'clean', filename)
+                snr = filepath.split(os.sep)[-3]
+                clean_data = np.load(clean_file_name)
+                noisy_data = np.load(filepath)
+                noisy_tensor = Tensor(noisy_data).unsqueeze(0).unsqueeze(0).to(device)
+                if ddim:
+                    pred = self.model.ddim_denoise(noisy_tensor)
+                else:
+                    pred = self.model.denoise(noisy_tensor, denoise_timesteps=denoise_timesteps)
+                pred = pred.cpu().detach().numpy().squeeze().squeeze()
+                # np.save(os.path.join(self.out_folder, f"snr_{snr}_{filename}"), pred)
+                denoised_snr = cal_snr(clean_data, pred)
+                denoised_rmse = cal_rmse(clean_data, pred)
+
+                ax[idx, 0].plot(clean_data)
+                ax[idx, 0].set_title("Clean")
+                ax[idx, 0].set_ylim(-1, 1)
+                ax[idx, 0].set_xlim(0, 10000)
+                ax[idx, 1].plot(noisy_data)
+                ax[idx, 1].set_title(f"Noisy SNR: {snr}")
+                ax[idx, 1].set_ylim(-1, 1)
+                ax[idx, 1].set_xlim(0, 10000)
+                ax[idx, 2].plot(pred)
+                ax[idx, 2].set_title(f"Denoised SNRimp: {denoised_snr - int(snr)} RMSE: {denoised_rmse}")
+                ax[idx, 2].set_ylim(-1, 1)
+                ax[idx, 2].set_xlim(0, 10000)
+                fig.suptitle(f"sEMG Denoising")
+                fig.savefig(os.path.join(self.out_folder, f"signal_comparison.png"))
+                print(f"denoised file: signal_comparison.png saved to {self.out_folder}")
         
