@@ -75,7 +75,7 @@ class Trainer1D(object):
         # dl = DataLoader(dataset, batch_size = train_batch_size, shuffle = True, pin_memory = True, num_workers = cpu_count())
         self.train_batch_size = train_batch_size
         # self.num_workers = num_workers
-        self.num_workers = cpu_count() / 2
+        self.num_workers = cpu_count() // 2
         train_dl = DataLoader(train_dataset, batch_size = train_batch_size, shuffle = True, pin_memory = True, num_workers = self.num_workers)
         valid_dl = DataLoader(validation_dataset, batch_size = train_batch_size, shuffle = False, pin_memory = True, num_workers = self.num_workers)
 
@@ -280,31 +280,31 @@ class Trainer1D(object):
             # load model
             self.load(milestone)
             # load data
-            # ts = np.arange(0, 100, 1)
-            # fig, ax = plt.subplots(nrows=10, ncols=10, figsize =(50, 30))
-            # fig.tight_layout()
-            # file_path = file_paths[0]
-            # filename = os.path.basename(file_path)
-            # clean_file_name = os.path.join(*file_path.split(os.sep)[:6])
-            # clean_file_name = os.path.join('/'+clean_file_name, 'clean', filename)
-            # clean_data = np.load(clean_file_name)
-            # noisy_data = np.load(file_path)
-            # noisy_tensor = Tensor(noisy_data).unsqueeze(0).unsqueeze(0).to(device)
-            # for idx, denoise_ts in enumerate(ts):
-            #     row = idx // 10
-            #     col = idx % 10
-            #     if ddim:
-            #         pred = self.model.ddim_denoise(noisy_tensor, denoise_timesteps=denoise_ts)
-            #     else:
-            #         pred = self.model.denoise(noisy_tensor, denoise_timesteps=denoise_ts)
-            #     pred = pred.cpu().detach().numpy().squeeze().squeeze()
-            #     ax[row, col].plot(pred)
-            #     ax[row, col].set_title(f"denoise_timesteps: {denoise_ts}")
-            #     ax[row, col].set_ylim(-1, 1)
-            #     ax[row, col].set_xlim(0, 5000)
-            #     print(f"step {denoise_ts} sample done!")
-            # fig.savefig(os.path.join(self.out_folder, f"denoise_ts_samples.png"))
-            # print(f"denoise_ts_samples saved to {self.out_folder}")
+            ts = np.arange(0, 100, 1)
+            fig, ax = plt.subplots(nrows=10, ncols=10, figsize =(50, 30))
+            fig.tight_layout()
+            file_path = file_paths[0]
+            filename = os.path.basename(file_path)
+            clean_file_name = os.path.join(*file_path.split(os.sep)[:6])
+            clean_file_name = os.path.join('/'+clean_file_name, 'clean', filename)
+            clean_data = np.load(clean_file_name)
+            noisy_data = np.load(file_path)
+            noisy_tensor = Tensor(noisy_data).unsqueeze(0).unsqueeze(0).to(device)
+            for idx, denoise_ts in enumerate(ts):
+                row = idx // 10
+                col = idx % 10
+                if ddim:
+                    pred = self.model.ddim_denoise(noisy_tensor, denoise_timesteps=denoise_ts)
+                else:
+                    pred = self.model.denoise(noisy_tensor, denoise_timesteps=denoise_ts)
+                pred = pred.cpu().detach().numpy().squeeze().squeeze()
+                ax[row, col].plot(pred)
+                ax[row, col].set_title(f"denoise_timesteps: {denoise_ts}")
+                ax[row, col].set_ylim(-1, 1)
+                ax[row, col].set_xlim(0, 5000)
+                print(f"step {denoise_ts} sample done!")
+            fig.savefig(os.path.join(self.out_folder, f"denoise_ts_samples.png"))
+            print(f"denoise_ts_samples saved to {self.out_folder}")
 
             
             ts = np.arange(0, self.model.num_timesteps+20, 10)

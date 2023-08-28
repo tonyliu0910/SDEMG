@@ -25,7 +25,7 @@ class EMGDataset(Dataset):
         # snr = noisy_file_name.split(os.sep)[-3]
         
         # data = np.vstack((clean_data, noisy_data))
-        return Tensor(noisy_data).unsqueeze(0), Tensor(clean_data).unsqueeze(0)
+        return Tensor(clean_data).unsqueeze(0), Tensor(noisy_data).unsqueeze(0)
         # return Tensor(noisy_data), Tensor(clean_data)
 
 class EMGTestDataset(Dataset):
@@ -48,7 +48,7 @@ class EMGTestDataset(Dataset):
         snr = noisy_file_name.split(os.sep)[-3]
         
         # data = np.vstack((clean_data, noisy_data))
-        return Tensor(noisy_data).unsqueeze(0), Tensor(clean_data).unsqueeze(0), snr
+        return Tensor(clean_data).unsqueeze(0), Tensor(noisy_data).unsqueeze(0), snr
         
 class CleanEMGDataset(Dataset):
     def __init__(self, clean_file_path):

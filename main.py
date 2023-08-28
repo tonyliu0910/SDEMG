@@ -74,12 +74,12 @@ def main(args):
     #             '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg5s_nsrd/noisy/-12/16272/S1_E2_A1_ch9_1.npy',
     #             '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg5s_nsrd/noisy/-14/16272/S1_E2_A1_ch9_1.npy']
 
-    trainer.denoise_sample(file_paths, milestone=inference_milestone, ddim=args.ddim, denoise_timesteps=args.denoise_timesteps)
+    # trainer.denoise_sample(file_paths, milestone=inference_milestone, ddim=args.ddim, denoise_timesteps=args.denoise_timesteps)
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='train (or resume training) a Diffusion model')
-    parser.add_argument('--project_name', default='Sample_DF_10sec_EP20_SS100_valid', help='project name')
-    parser.add_argument('--train_epochs', default=20, type=int, help='number of training epochs')
+    parser.add_argument('--project_name', default='Sample_DF_10sec_EP10_SS100_valid', help='project name')
+    parser.add_argument('--train_epochs', default=10, type=int, help='number of training epochs')
     parser.add_argument('--batch_size', default=256, type=int, help='batch size')
     parser.add_argument('--root_dir', default='.', help='root directory for data and model storage')
     parser.add_argument('--train_dir', default='/work/t22302856/Tony_data/sEMG_Dataset/train_E1_S40_Ch2_withSTI_seg10s_nsrd', help='directory containing training EMG waveforms')
