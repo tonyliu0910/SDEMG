@@ -9,7 +9,7 @@ class EMGDataset(Dataset):
     def __init__(self, file_path):
         super().__init__()
         self.file_path = file_path
-        self.noisy_file_names = glob(os.path.join(self.file_path, 'noisy', '**', '**', "*.npy"), recursive=True)
+        self.noisy_file_names = glob(os.path.join(self.file_path, 'noisy', '**', "*.npy"), recursive=True)
         self.clean_file_names = glob(os.path.join(self.file_path, 'clean', "*.npy"), recursive=True)
         self.snr_list = sorted(os.listdir(os.path.join(self.file_path, 'noisy')), key=int, reverse=True)
 
@@ -32,7 +32,7 @@ class EMGTestDataset(Dataset):
     def __init__(self, file_path):
         super().__init__()
         self.file_path = file_path
-        self.noisy_file_names = glob(os.path.join(self.file_path, 'noisy', '**', '**', "*.npy"), recursive=True)
+        self.noisy_file_names = glob(os.path.join(self.file_path, 'noisy', '**', "*.npy"), recursive=True)
         self.clean_file_names = glob(os.path.join(self.file_path, 'clean', "*.npy"), recursive=True)
         self.snr_list = sorted(os.listdir(os.path.join(self.file_path, 'noisy')), key=int, reverse=True)
 

@@ -217,7 +217,7 @@ class Trainer1D(object):
         snr_list = test_dataset.snr_list
 
         df = pd.DataFrame(index=test_dataset.snr_list, columns=['SNR','loss','rmse','prd','arv','kr', 'r2', 'cc', 'file_count'])
-
+        
         for col in df.columns:
             df[col].values[:] = 0
 
@@ -231,24 +231,18 @@ class Trainer1D(object):
 
         with tqdm(test_dl) as it:
             for batch_idx, (clean_batch, noisy_batch, snr_batch) in enumerate(it):
-                # data_batch = batch[0]
-                # snr_batch = batch[1]
-                # clean_batch = data_batch[:,:1]
-                # noisy_batch = data_batch[:,1:].to(device)
-                # print(f"clean shape {clean_batch.shape}, nosiy shape {noisy_batch.shape}")
-                # print(clean_batch.shape, noisy_batch.shape)
                 if ddim:
                     pred = self.model.ddim_denoise(noisy_batch)
                 else:
                     pred = self.model.denoise(noisy_batch, denoise_timesteps=denoise_timesteps)
-                # print(f"pred shape {pred.shape}")
+
                 clean_batch = clean_batch.cpu().detach().numpy()
                 pred = pred.cpu().detach().numpy()
                 snr_batch = np.array(snr_batch)
                 for i, (pred_i, clean, snr) in enumerate(zip(pred, clean_batch, snr_batch)):
                     clean = clean.squeeze().squeeze()
                     enhanced = pred_i.squeeze().squeeze()
-                    # print(f"clean: {clean.shape}, enhanced: {enhanced.shape}")
+
                     loss = criterion(torch.from_numpy(enhanced), torch.from_numpy(clean)).item()
                     SNR = cal_snr(clean,enhanced)
                     RMSE = cal_rmse(clean,enhanced)
@@ -266,8 +260,9 @@ class Trainer1D(object):
                     df.at[snr, 'r2'] = df.at[snr, 'r2'] + R2
                     df.at[snr, 'cc'] = df.at[snr, 'cc'] + CC
                     df.at[snr, 'file_count'] = df.at[snr, 'file_count'] + 1
+                    count += 1
 
-        # print(f"Testing done! Test file count: {count}")
+        print(f"Testing done! Test file count: {count}")
         for col in df.columns[:8]:
             df[col].values[:] = df[col].values[:]/df['file_count'].values[:]
         df = df.round(5)
