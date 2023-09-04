@@ -64,7 +64,7 @@ class GaussianDiffusion1D(nn.Module):
         timesteps = 1000,
         sampling_timesteps = None,
         objective = 'pred_noise',
-        beta_schedule = 'quad',
+        beta_schedule = 'cosine',
         ddim_sampling_eta = 0.,
         auto_normalize = False,
         loss_function = 'l1',

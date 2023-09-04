@@ -34,6 +34,7 @@ def main(args):
         timesteps = args.sampling_steps,
         objective = args.objective,
         loss_function = args.loss_function,
+        beta_schedule = args.beta_schedule,
         condition = args.condition,
     )
 
@@ -51,11 +52,11 @@ def main(args):
         num_workers = args.num_workers
     )
 
-    # trainer.train()
+    trainer.train()
     
     inference_milestone = default(args.inference_milestone, args.train_epochs-1)
 
-    # test_dataset = EMGTestDataset(test_path)
+    test_dataset = EMGTestDataset(test_path)
     # trainer.test(test_dataset, score_path, milestone=inference_milestone, ddim=args.ddim, denoise_timesteps=args.denoise_timesteps)
 
     #currently 10s
@@ -78,7 +79,7 @@ def main(args):
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='train (or resume training) a Diffusion model')
-    parser.add_argument('--project_name', default='Sample_DF_10sec_EP10_SS100_valid', help='project name')
+    parser.add_argument('--project_name', default='Sample_DF_10sec_EP30_SS50_quad', help='project name')
     parser.add_argument('--train_epochs', default=10, type=int, help='number of training epochs')
     parser.add_argument('--batch_size', default=256, type=int, help='batch size')
     parser.add_argument('--root_dir', default='.', help='root directory for data and model storage')
@@ -88,6 +89,7 @@ if __name__ == '__main__':
     parser.add_argument('--result_dir', default='/work/t22302856/Tony_data/EMG_denoise', help='directory to store scores')
     parser.add_argument('--condition', default=True, type=bool, help='condition on noise')
     parser.add_argument('--sampling_steps', default=100, type=int, help='number of sampling steps')
+    parser.add_argument('--beta_schedule', default='quad', help='diffusion process beta scheduler')
     parser.add_argument('--ddim', default=False, type=bool, help='use ddim sampling')
     parser.add_argument('--seq_length', default=10000, type=int, help='length of sequence')
     parser.add_argument('--objective', default='pred_noise', help='diffusion objective')
