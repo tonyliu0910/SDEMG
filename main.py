@@ -80,7 +80,7 @@ def main(args):
 if __name__ == '__main__':
     parser = ArgumentParser(description='train (or resume training) a Diffusion model')
     parser.add_argument('--project_name', default='Sample_DF_10sec_EP30_SS50_quad', help='project name')
-    parser.add_argument('--train_epochs', default=10, type=int, help='number of training epochs')
+    parser.add_argument('--train_epochs', default=30, type=int, help='number of training epochs')
     parser.add_argument('--batch_size', default=256, type=int, help='batch size')
     parser.add_argument('--root_dir', default='.', help='root directory for data and model storage')
     parser.add_argument('--train_dir', default='/work/t22302856/Tony_data/sEMG_Dataset/train_E1_S40_Ch2_withSTI_seg10s_nsrd', help='directory containing training EMG waveforms')
@@ -88,7 +88,7 @@ if __name__ == '__main__':
     parser.add_argument('--test_dir', default='/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd', help='directory containing testing EMG waveforms') 
     parser.add_argument('--result_dir', default='/work/t22302856/Tony_data/EMG_denoise', help='directory to store scores')
     parser.add_argument('--condition', default=True, type=bool, help='condition on noise')
-    parser.add_argument('--sampling_steps', default=100, type=int, help='number of sampling steps')
+    parser.add_argument('--sampling_steps', default=50, type=int, help='number of sampling steps')
     parser.add_argument('--beta_schedule', default='quad', help='diffusion process beta scheduler')
     parser.add_argument('--ddim', default=False, type=bool, help='use ddim sampling')
     parser.add_argument('--seq_length', default=10000, type=int, help='length of sequence')
