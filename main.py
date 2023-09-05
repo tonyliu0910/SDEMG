@@ -14,6 +14,7 @@ def main(args):
     validation_path = args.valid_dir
     result_path = os.path.join(args.result_dir, args.project_name)
     score_path = os.path.join(result_path, f'{args.project_name}.csv')
+    ptb_score_path = os.path.join(result_path, f'{args.project_name}_ptb.csv')
     test_path = args.test_dir
     
     train_dataset = EMGDataset(train_path)
@@ -52,12 +53,12 @@ def main(args):
         num_workers = args.num_workers
     )
 
-    trainer.train()
+    # trainer.train()
     
     inference_milestone = default(args.inference_milestone, args.train_epochs-1)
 
     test_dataset = EMGTestDataset(test_path)
-    # trainer.test(test_dataset, score_path, milestone=inference_milestone, ddim=args.ddim, denoise_timesteps=args.denoise_timesteps)
+    trainer.test(test_dataset, score_path, milestone=inference_milestone, ddim=args.ddim, denoise_timesteps=args.denoise_timesteps)
 
     #currently 10s
     file_paths = ['/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/0/16420/S1_E2_A1_ch9_3.npy',
@@ -75,12 +76,16 @@ def main(args):
     #             '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg5s_nsrd/noisy/-12/16272/S1_E2_A1_ch9_1.npy',
     #             '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg5s_nsrd/noisy/-14/16272/S1_E2_A1_ch9_1.npy']
 
-    # trainer.denoise_sample(file_paths, milestone=inference_milestone, ddim=args.ddim, denoise_timesteps=args.denoise_timesteps)
+    trainer.denoise_sample(file_paths, milestone=inference_milestone, ddim=args.ddim, denoise_timesteps=args.denoise_timesteps)
+    
+    mismatch_dataset = EMGTestDataset('/work/t22302856/Tony_data/sEMG_Dataset_PTB/test_E2_S10_Ch9_withSTI_seg10s_nsrd')
+    trainer.test(mismatch_dataset, ptb_score_path, milestone=inference_milestone, ddim=args.ddim, denoise_timesteps=args.denoise_timesteps)
+
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='train (or resume training) a Diffusion model')
-    parser.add_argument('--project_name', default='Sample_DF_10sec_EP30_SS50_quad', help='project name')
-    parser.add_argument('--train_epochs', default=30, type=int, help='number of training epochs')
+    parser.add_argument('--project_name', default='Sample_DF_10sec_EP10_SS50_cosine', help='project name')
+    parser.add_argument('--train_epochs', default=10, type=int, help='number of training epochs')
     parser.add_argument('--batch_size', default=256, type=int, help='batch size')
     parser.add_argument('--root_dir', default='.', help='root directory for data and model storage')
     parser.add_argument('--train_dir', default='/work/t22302856/Tony_data/sEMG_Dataset/train_E1_S40_Ch2_withSTI_seg10s_nsrd', help='directory containing training EMG waveforms')
@@ -89,7 +94,7 @@ if __name__ == '__main__':
     parser.add_argument('--result_dir', default='/work/t22302856/Tony_data/EMG_denoise', help='directory to store scores')
     parser.add_argument('--condition', default=True, type=bool, help='condition on noise')
     parser.add_argument('--sampling_steps', default=50, type=int, help='number of sampling steps')
-    parser.add_argument('--beta_schedule', default='quad', help='diffusion process beta scheduler')
+    parser.add_argument('--beta_schedule', default='cosine', help='diffusion process beta scheduler')
     parser.add_argument('--ddim', default=False, type=bool, help='use ddim sampling')
     parser.add_argument('--seq_length', default=10000, type=int, help='length of sequence')
     parser.add_argument('--objective', default='pred_noise', help='diffusion objective')

@@ -278,7 +278,7 @@ class Trainer1D(object):
             # load model
             self.load(milestone)
             # load data
-            ts = np.arange(0, 100, 1)
+            ts = np.arange(0, self.model.sampling_timesteps+1, 1)
             fig, ax = plt.subplots(nrows=10, ncols=10, figsize =(50, 30))
             fig.tight_layout()
             file_path = file_paths[0]
