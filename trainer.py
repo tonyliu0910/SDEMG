@@ -102,7 +102,7 @@ class Trainer1D(object):
 
         # prepare model, dataloader, optimizer with accelerator
 
-        self.lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.opt, factor=0.3, patience=3, verbose=True)
+        self.lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.opt, factor=0.5, patience=2, verbose=True)
 
         self.model, self.opt= self.accelerator.prepare(self.model, self.opt)
 
@@ -217,7 +217,7 @@ class Trainer1D(object):
         snr_list = test_dataset.snr_list
 
         df = pd.DataFrame(index=test_dataset.snr_list, columns=['SNR','loss','rmse','prd','arv','kr', 'mf', 'r2', 'cc', 'file_count'])
-        
+        df_2 = pd.DataFrame(columns=['snr','file_name','SNR','loss','rmse','prd','arv','kr', 'mf', 'r2', 'cc'])
         for col in df.columns:
             df[col].values[:] = 0
 
@@ -230,7 +230,7 @@ class Trainer1D(object):
 
 
         with tqdm(test_dl) as it:
-            for batch_idx, (clean_batch, noisy_batch, snr_batch, sti_batch) in enumerate(it):
+            for batch_idx, (clean_batch, noisy_batch, snr_batch, sti_batch, file_name_batch) in enumerate(it):
                 if ddim:
                     pred = self.model.ddim_denoise(noisy_batch)
                 else:
@@ -240,7 +240,7 @@ class Trainer1D(object):
                 pred = pred.cpu().detach().numpy()
                 snr_batch = np.array(snr_batch)
                 sti_batch = sti_batch.cpu().detach().numpy()
-                for i, (pred_i, clean, snr, sti) in enumerate(zip(pred, clean_batch, snr_batch, sti_batch)):
+                for i, (pred_i, clean, snr, sti, file_name) in enumerate(zip(pred, clean_batch, snr_batch, sti_batch, file_name_batch)):
                     clean = clean.squeeze().squeeze()
                     enhanced = pred_i.squeeze().squeeze()
                     sti = sti.squeeze().squeeze()
@@ -263,13 +263,15 @@ class Trainer1D(object):
                     df.at[snr, 'r2'] = df.at[snr, 'r2'] + R2
                     df.at[snr, 'cc'] = df.at[snr, 'cc'] + CC
                     df.at[snr, 'file_count'] = df.at[snr, 'file_count'] + 1
+                    df_2 = df_2.append({'snr': snr, 'file_name': file_name, 'SNR': SNR, 'loss': loss, 'rmse': RMSE, 'prd': PRD, 'arv': RMSE_ARV, 'kr': KR, 'mf': MF, 'r2': R2, 'cc': CC})
                     count += 1
 
         print(f"Testing done! Test file count: {count}")
-        for col in df.columns[:8]:
+        for col in df.columns[:-1]:
             df[col].values[:] = df[col].values[:]/df['file_count'].values[:]
-        df = df.round(5)
+
         df.to_csv(self.score_path)
+        df_2.to_csv(self.score_path.replace('.csv', '_detail.csv'))
 
     def denoise_sample(self, file_paths, milestone, ddim, denoise_timesteps=None):
         accelerator = self.accelerator

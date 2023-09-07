@@ -48,7 +48,7 @@ class EMGTestDataset(Dataset):
         clean_sti = np.load(clean_sti_file_name)
         snr = noisy_file_name.split(os.sep)[-3]
         # data = np.vstack((clean_data, noisy_data))
-        return Tensor(clean_data).unsqueeze(0), Tensor(noisy_data).unsqueeze(0), snr, Tensor(clean_sti).unsqueeze(0)
+        return Tensor(clean_data).unsqueeze(0), Tensor(noisy_data).unsqueeze(0), snr, Tensor(clean_sti).unsqueeze(0), os.path.basename(noisy_file_name).replace('.npy', '')
         
 class CleanEMGDataset(Dataset):
     def __init__(self, clean_file_path):
