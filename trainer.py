@@ -74,8 +74,8 @@ class Trainer1D(object):
 
         # dl = DataLoader(dataset, batch_size = train_batch_size, shuffle = True, pin_memory = True, num_workers = cpu_count())
         self.train_batch_size = train_batch_size
-        # self.num_workers = num_workers
-        self.num_workers = cpu_count() // 2
+        self.num_workers = num_workers
+        # self.num_workers = cpu_count() // 2
         train_dl = DataLoader(train_dataset, batch_size = train_batch_size, shuffle = True, pin_memory = True, num_workers = self.num_workers)
         valid_dl = DataLoader(validation_dataset, batch_size = train_batch_size, shuffle = False, pin_memory = True, num_workers = self.num_workers)
 
