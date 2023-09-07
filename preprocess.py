@@ -334,7 +334,7 @@ class EMGdata:
 class PTB_data:
     def __init__(self, corpus_path, save_path):
         self.corpus_path = corpus_path
-        self.patient_list = [file for file in os.listdir(self.corpus_path) if 'patient' in file]
+        self.patient_list = sorted([file for file in os.listdir(self.corpus_path) if 'patient' in file])
         self.patient_list = self.patient_list[:10]
         self.save_path = save_path
         check_path(self.save_path)
@@ -371,6 +371,7 @@ if __name__ == '__main__':
     ptb_corpus_path = '/work/t22302856/Tony_data/ptbdb-1.0.0'
     ptb_save_path = '/work/t22302856/Tony_data/PTB_Ch1_fs1000_bp'
     ptb_data = PTB_data(ptb_corpus_path, ptb_save_path)
+    ptb_data.prepare()
 
     emg_corpus_path = '/work/t22302856/Tony_data/EMG_DB2'
     emg_train_path = '/work/t22302856/Tony_data/sEMG_Dataset_PTB/train'
