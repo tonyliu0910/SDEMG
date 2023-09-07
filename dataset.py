@@ -42,13 +42,13 @@ class EMGTestDataset(Dataset):
     def __getitem__(self, idx):
         noisy_file_name = self.noisy_file_names[idx]
         clean_file_name = os.path.join(self.file_path, 'clean', os.path.basename(noisy_file_name))
-
+        clean_sti_file_name = os.path.join(self.file_path, 'clean', os.path.basename(noisy_file_name).replace('.npy', '_sti.npy'))
         noisy_data = np.load(noisy_file_name)
         clean_data = np.load(clean_file_name)
+        clean_sti = np.load(clean_sti_file_name)
         snr = noisy_file_name.split(os.sep)[-3]
-        
         # data = np.vstack((clean_data, noisy_data))
-        return Tensor(clean_data).unsqueeze(0), Tensor(noisy_data).unsqueeze(0), snr
+        return Tensor(clean_data).unsqueeze(0), Tensor(noisy_data).unsqueeze(0), snr, Tensor(clean_sti).unsqueeze(0)
         
 class CleanEMGDataset(Dataset):
     def __init__(self, clean_file_path):

@@ -216,7 +216,7 @@ class Trainer1D(object):
 
         snr_list = test_dataset.snr_list
 
-        df = pd.DataFrame(index=test_dataset.snr_list, columns=['SNR','loss','rmse','prd','arv','kr', 'r2', 'cc', 'file_count'])
+        df = pd.DataFrame(index=test_dataset.snr_list, columns=['SNR','loss','rmse','prd','arv','kr', 'mf', 'r2', 'cc', 'file_count'])
         
         for col in df.columns:
             df[col].values[:] = 0
@@ -230,7 +230,7 @@ class Trainer1D(object):
 
 
         with tqdm(test_dl) as it:
-            for batch_idx, (clean_batch, noisy_batch, snr_batch) in enumerate(it):
+            for batch_idx, (clean_batch, noisy_batch, snr_batch, sti_batch) in enumerate(it):
                 if ddim:
                     pred = self.model.ddim_denoise(noisy_batch)
                 else:
@@ -239,16 +239,18 @@ class Trainer1D(object):
                 clean_batch = clean_batch.cpu().detach().numpy()
                 pred = pred.cpu().detach().numpy()
                 snr_batch = np.array(snr_batch)
-                for i, (pred_i, clean, snr) in enumerate(zip(pred, clean_batch, snr_batch)):
+                sti_batch = sti_batch.cpu().detach().numpy()
+                for i, (pred_i, clean, snr, sti) in enumerate(zip(pred, clean_batch, snr_batch, sti_batch)):
                     clean = clean.squeeze().squeeze()
                     enhanced = pred_i.squeeze().squeeze()
-
+                    sti = sti.squeeze().squeeze()
                     loss = criterion(torch.from_numpy(enhanced), torch.from_numpy(clean)).item()
                     SNR = cal_snr(clean,enhanced)
                     RMSE = cal_rmse(clean,enhanced)
                     PRD = cal_prd(clean,enhanced)
                     RMSE_ARV = cal_rmse(cal_ARV(clean),cal_ARV(enhanced))
                     KR = abs(cal_KR(clean)-cal_KR(enhanced))
+                    MF = cal_rmse(cal_MF(clean,sti),cal_MF(enhanced,sti))
                     R2 = cal_R2(clean,enhanced)
                     CC = cal_CC(clean,enhanced)
                     df.at[snr, 'SNR'] = df.at[snr, 'SNR'] + SNR
@@ -257,6 +259,7 @@ class Trainer1D(object):
                     df.at[snr, 'prd'] = df.at[snr, 'prd'] + PRD
                     df.at[snr, 'arv'] = df.at[snr, 'arv'] + RMSE_ARV
                     df.at[snr, 'kr'] = df.at[snr, 'kr'] + KR
+                    df.at[snr, 'mf'] = df.at[snr, 'mf'] + MF
                     df.at[snr, 'r2'] = df.at[snr, 'r2'] + R2
                     df.at[snr, 'cc'] = df.at[snr, 'cc'] + CC
                     df.at[snr, 'file_count'] = df.at[snr, 'file_count'] + 1

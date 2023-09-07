@@ -3,11 +3,11 @@ import torch
 from torch import einsum
 import torch.nn as nn
 import torch.nn.functional as F
-# from torchsummary import summary
+from torchsummary import summary
+import torchsummary
 from math import log as ln
 from einops import rearrange
 
-# import leaf_audio_pytorch.frontend as frontend
 
 class Conv1d(nn.Conv1d):
     def __init__(self, *args, **kwargs):
@@ -192,3 +192,12 @@ class ConditionalModel(nn.Module):
             cond = layer(cond)+x
         
         return self.conv_out(cond)
+
+if __name__ == '__main__':
+    model = ConditionalModel(feats=64)
+    input_size = (1, 10000)
+    batch_size = 256
+    device = 'cuda' if torch.cuda.is_available() else 'cpu'
+    dtypes = [torch.float32]
+    result = summary(model, input_size=input_size)
+
