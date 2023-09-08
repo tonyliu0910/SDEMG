@@ -5,8 +5,8 @@ from dataset import EMGDataset, EMGTestDataset
 from ddpm_1d import GaussianDiffusion1D
 from trainer import Trainer1D
 from model import Unet1D
-from deep_filter_model import ConditionalModel
-# from new_model import ConditionalModel
+# from deep_filter_model import ConditionalModel
+from new_model import ConditionalModel
 from utils import default
 
 def main(args):
@@ -54,7 +54,7 @@ def main(args):
         num_workers = args.num_workers
     )
 
-    trainer.train()
+    # trainer.train()
     
     inference_milestone = default(args.inference_milestone, args.train_epochs-1)
 
@@ -90,15 +90,15 @@ def main(args):
 
     trainer.denoise_sample(file_paths, milestone=inference_milestone, ddim=args.ddim, denoise_timesteps=args.denoise_timesteps)
     
-    # mismatch_dataset = EMGTestDataset('/work/t22302856/Tony_data/sEMG_Dataset_PTB/test_E2_S10_Ch9_withSTI_seg10s_nsrd')
-    # trainer.test(mismatch_dataset, ptb_score_path, milestone=inference_milestone, ddim=args.ddim, denoise_timesteps=args.denoise_timesteps)
+    mismatch_dataset = EMGTestDataset('/work/bigtony0910/sEMG_Dataset_PTB/test_E2_S10_Ch9_withSTI_seg10s_nsrd')
+    trainer.test(mismatch_dataset, ptb_score_path, milestone=inference_milestone, ddim=args.ddim, denoise_timesteps=args.denoise_timesteps)
 
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='train (or resume training) a Diffusion model')
-    parser.add_argument('--project_name', default='DF_10sec_EP20_SS10_cosine', help='project name')
-    parser.add_argument('--train_epochs', default=20, type=int, help='number of training epochs')
-    parser.add_argument('--batch_size', default=64, type=int, help='batch size')
+    parser.add_argument('--project_name', default='Sample_DF_10sec_EP10_SS50_new_mdl', help='project name')
+    parser.add_argument('--train_epochs', default=10, type=int, help='number of training epochs')
+    parser.add_argument('--batch_size', default=8, type=int, help='batch size')
     parser.add_argument('--root_dir', default='.', help='root directory for data and model storage')
     parser.add_argument('--train_dir', default='/work/bigtony0910/sEMG_Dataset/train_E1_S40_Ch2_withSTI_seg10s_nsrd', help='directory containing training EMG waveforms')
     parser.add_argument('--valid_dir', default='/work/bigtony0910/sEMG_Dataset/valid_E3_S10_Ch2_withSTI_seg10s_nsrd', help='directory containing validation EMG waveforms')

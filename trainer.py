@@ -215,9 +215,12 @@ class Trainer1D(object):
         test_dl = self.accelerator.prepare(test_dl)
 
         snr_list = test_dataset.snr_list
-
+        dict_list = []
+        base_dict = {'snr':0,'file_name':None,'SNR': 0, 'loss': 0, 'rmse': 0, 'prd': 0, 'arv': 0, 'kr': 0, 'mf': 0, 'r2': 0, 'cc': 0}
+        
+        
         df = pd.DataFrame(index=test_dataset.snr_list, columns=['SNR','loss','rmse','prd','arv','kr', 'mf', 'r2', 'cc', 'file_count'])
-        df_2 = pd.DataFrame(columns=['snr','file_name','SNR','loss','rmse','prd','arv','kr', 'mf', 'r2', 'cc'])
+        # df_2 = pd.DataFrame(columns=['snr','file_name','SNR','loss','rmse','prd','arv','kr', 'mf', 'r2', 'cc'])
         for col in df.columns:
             df[col].values[:] = 0
 
@@ -263,14 +266,17 @@ class Trainer1D(object):
                     df.at[snr, 'r2'] = df.at[snr, 'r2'] + R2
                     df.at[snr, 'cc'] = df.at[snr, 'cc'] + CC
                     df.at[snr, 'file_count'] = df.at[snr, 'file_count'] + 1
-                    df_2 = df_2.append({'snr': snr, 'file_name': file_name, 'SNR': SNR, 'loss': loss, 'rmse': RMSE, 'prd': PRD, 'arv': RMSE_ARV, 'kr': KR, 'mf': MF, 'r2': R2, 'cc': CC})
+                    base_dict = {'snr':snr,'file_name':file_name,'SNR': SNR, 'loss': loss, 'rmse': RMSE, 'prd': PRD, 'arv': RMSE_ARV, 'kr': KR, 'mf': MF, 'r2': R2, 'cc': CC}
+                    # df_2 = df_2.append({'snr': snr, 'file_name': file_name, 'SNR': SNR, 'loss': loss, 'rmse': RMSE, 'prd': PRD, 'arv': RMSE_ARV, 'kr': KR, 'mf': MF, 'r2': R2, 'cc': CC}, ignore_index=True)
                     count += 1
+                    dict_list.append(base_dict)
 
         print(f"Testing done! Test file count: {count}")
         for col in df.columns[:-1]:
             df[col].values[:] = df[col].values[:]/df['file_count'].values[:]
 
         df.to_csv(self.score_path)
+        df_2 = pd.DataFrame.from_dict(dict_list)
         df_2.to_csv(self.score_path.replace('.csv', '_detail.csv'))
 
     def denoise_sample(self, file_paths, milestone, ddim, denoise_timesteps=None):
