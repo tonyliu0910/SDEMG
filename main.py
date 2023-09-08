@@ -1,22 +1,30 @@
 import os
 from argparse import ArgumentParser
+import yaml
 
 from dataset import EMGDataset, EMGTestDataset
 from ddpm_1d import GaussianDiffusion1D
 from trainer import Trainer1D
 from model import Unet1D
-# from deep_filter_model import ConditionalModel
-from new_model import ConditionalModel
+from deep_filter_model import ConditionalModel
+# from new_model import ConditionalModel
 from utils import default
 
+
 def main(args):
-    print(f"Running experiment {args.project_name}")
-    train_path = args.train_dir
-    validation_path = args.valid_dir
-    result_path = os.path.join(args.result_dir, args.project_name)
-    score_path = os.path.join(result_path, f'{args.project_name}.csv')
-    ptb_score_path = os.path.join(result_path, f'{args.project_name}_ptb.csv')
-    test_path = args.test_dir
+    with open(args.data_cfg, "r") as f:
+        file_cfg = yaml.safe_load(f)
+    with open(args.experiment_cfg, "r") as f:
+        exp_cfg = yaml.safe_load(f)
+
+    print(f"Running experiment {exp_cfg['project_name']}")
+
+    train_path = file_cfg['train_dir']
+    validation_path = file_cfg['valid_dir']
+    result_path = os.path.join(file_cfg['result_dir'], exp_cfg['project_name'])
+    score_path = os.path.join(result_path, f"{exp_cfg['project_name']}.csv")
+    ptb_score_path = os.path.join(result_path, f"{exp_cfg['project_name']}_ptb.csv")
+    test_path = file_cfg['test_dir']
     
     train_dataset = EMGDataset(train_path)
     validation_dataset = EMGDataset(validation_path)
@@ -32,90 +40,68 @@ def main(args):
 
     diffusion = GaussianDiffusion1D(
         model,
-        seq_length = args.seq_length,
-        timesteps = args.sampling_steps,
-        objective = args.objective,
-        loss_function = args.loss_function,
-        beta_schedule = args.beta_schedule,
-        condition = args.condition,
+        seq_length = exp_cfg['seq_length'],
+        timesteps = exp_cfg['sampling_steps'],
+        objective = exp_cfg['objective'],
+        loss_function = exp_cfg['loss_function'],
+        beta_schedule = exp_cfg['beta_schedule'],
+        condition = exp_cfg['condition'],
     )
 
     trainer = Trainer1D(
         diffusion,
         train_dataset = train_dataset,
         validation_dataset = validation_dataset,
-        train_epochs = args.train_epochs,
-        train_batch_size = args.batch_size,
-        train_lr = args.lr,        
-        gradient_accumulate_every = args.gradient_accumulate_every,    # gradient accumulation steps
-        ema_decay = args.ema_decay,                # exponential moving average decay
-        amp = args.mix_precision,
+        train_epochs = exp_cfg['train_epochs'],
+        train_batch_size = exp_cfg['batch_size'],
+        train_lr = exp_cfg['lr'],        
+        gradient_accumulate_every = exp_cfg['gradient_accumulate_every'],    # gradient accumulation steps
+        ema_decay = exp_cfg['ema_decay'],                # exponential moving average decay
+        amp = exp_cfg['mix_precision'],
         results_folder = result_path,                      # turn on mixed precision
-        num_workers = args.num_workers
+        num_workers = file_cfg['num_workers']
     )
-
-    # trainer.train()
+    inference_milestone = default(exp_cfg['inference_milestone'], None)
     
-    inference_milestone = default(args.inference_milestone, args.train_epochs-1)
+    with open(os.path.join(result_path, 'experiment_cfg.yaml'), 'w') as yaml_file:
+        yaml.dump(exp_cfg, yaml_file, default_flow_style=False)
 
-    test_dataset = EMGTestDataset(test_path)
-    trainer.test(test_dataset, score_path, milestone=inference_milestone, ddim=args.ddim, denoise_timesteps=args.denoise_timesteps)
+    if args.train:
+        print('start training')
+        trainer.train()
 
-    #currently 10s
-    # file_paths = ['/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/0/16420/S1_E2_A1_ch9_3.npy',
-    #                '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-4/16420/S1_E2_A1_ch9_3.npy',
-    #                '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-8/16420/S1_E2_A1_ch9_3.npy',
-    #                '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-12/16420/S1_E2_A1_ch9_3.npy']
+    if args.test:
+        print('testing normal condition')
+        test_dataset = EMGTestDataset(test_path)
+        trainer.test(test_dataset, score_path, milestone=inference_milestone, ddim=exp_cfg['ddim'], denoise_timesteps=exp_cfg['denoise_timesteps'])
 
-    file_paths = ['/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/0/16420/S1_E2_A1_ch9_0.npy',
-                    '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-2/16420/S1_E2_A1_ch9_1.npy',
-                    '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-4/16420/S1_E2_A1_ch9_2.npy',
-                    '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-6/16420/S1_E2_A1_ch9_3.npy',
-                    '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-8/16420/S1_E2_A1_ch9_4.npy',
-                    '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-10/16420/S1_E2_A1_ch9_5.npy',
-                    '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-12/16420/S1_E2_A1_ch9_6.npy',
-                    '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-14/16420/S1_E2_A1_ch9_7.npy',
-                    '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-4/16539/S1_E2_A1_ch9_8.npy',
-                    '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-10/16539/S1_E2_A1_ch9_9.npy']
-    # file_paths = ['/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-10/16420/S1_E2_A1_ch9_3.npy']
+    if args.sample:  
+        print('sampling') 
+        file_paths = ['/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/0/16420/S1_E2_A1_ch9_0.npy',
+                        '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-2/16420/S1_E2_A1_ch9_1.npy',
+                        '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-4/16420/S1_E2_A1_ch9_2.npy',
+                        '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-6/16420/S1_E2_A1_ch9_3.npy',
+                        '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-8/16420/S1_E2_A1_ch9_4.npy',
+                        '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-10/16420/S1_E2_A1_ch9_5.npy',
+                        '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-12/16420/S1_E2_A1_ch9_6.npy',
+                        '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-14/16420/S1_E2_A1_ch9_7.npy',
+                        '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-4/16539/S1_E2_A1_ch9_8.npy',
+                        '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-10/16539/S1_E2_A1_ch9_9.npy']
+        trainer.denoise_sample(file_paths, milestone=inference_milestone, ddim=exp_cfg['ddim'], denoise_timesteps=exp_cfg['denoise_timesteps'])
 
-    # file_paths = ['/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg5s_nsrd/noisy/0/16272/S1_E2_A1_ch9_1.npy',
-    #             '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg5s_nsrd/noisy/-2/16272/S1_E2_A1_ch9_1.npy', 
-    #             '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg5s_nsrd/noisy/-4/16272/S1_E2_A1_ch9_1.npy',
-    #             '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg5s_nsrd/noisy/-6/16272/S1_E2_A1_ch9_1.npy',
-    #             '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg5s_nsrd/noisy/-8/16272/S1_E2_A1_ch9_1.npy',
-    #             '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg5s_nsrd/noisy/-10/16272/S1_E2_A1_ch9_1.npy',
-    #             '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg5s_nsrd/noisy/-12/16272/S1_E2_A1_ch9_1.npy',
-    #             '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg5s_nsrd/noisy/-14/16272/S1_E2_A1_ch9_1.npy']
+    if args.test_mismatch:
+        print('testing mismatch condition')
+        mismatch_dataset = EMGTestDataset(file_cfg['mismatch_dir'])
+        trainer.test(mismatch_dataset, ptb_score_path, milestone=inference_milestone, ddim=exp_cfg['ddim'], denoise_timesteps=exp_cfg['denoise_timesteps'])
 
-    trainer.denoise_sample(file_paths, milestone=inference_milestone, ddim=args.ddim, denoise_timesteps=args.denoise_timesteps)
-    
-    mismatch_dataset = EMGTestDataset('/work/bigtony0910/sEMG_Dataset_PTB/test_E2_S10_Ch9_withSTI_seg10s_nsrd')
-    trainer.test(mismatch_dataset, ptb_score_path, milestone=inference_milestone, ddim=args.ddim, denoise_timesteps=args.denoise_timesteps)
 
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='train (or resume training) a Diffusion model')
-    parser.add_argument('--project_name', default='Sample_DF_10sec_EP10_SS50_new_mdl', help='project name')
-    parser.add_argument('--train_epochs', default=10, type=int, help='number of training epochs')
-    parser.add_argument('--batch_size', default=8, type=int, help='batch size')
-    parser.add_argument('--root_dir', default='.', help='root directory for data and model storage')
-    parser.add_argument('--train_dir', default='/work/bigtony0910/sEMG_Dataset/train_E1_S40_Ch2_withSTI_seg10s_nsrd', help='directory containing training EMG waveforms')
-    parser.add_argument('--valid_dir', default='/work/bigtony0910/sEMG_Dataset/valid_E3_S10_Ch2_withSTI_seg10s_nsrd', help='directory containing validation EMG waveforms')
-    parser.add_argument('--test_dir', default='/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd', help='directory containing testing EMG waveforms') 
-    parser.add_argument('--result_dir', default='/work/bigtony0910/result', help='directory to store scores')
-    parser.add_argument('--condition', default=True, type=bool, help='condition on noise')
-    parser.add_argument('--sampling_steps', default=50, type=int, help='number of sampling steps')
-    parser.add_argument('--beta_schedule', default='cosine', help='diffusion process beta scheduler')
-    parser.add_argument('--ddim', default=False, type=bool, help='use ddim sampling')
-    parser.add_argument('--seq_length', default=10000, type=int, help='length of sequence')
-    parser.add_argument('--objective', default='pred_noise', help='diffusion objective')
-    parser.add_argument('--loss_function', default='l2', help='loss function')
-    parser.add_argument('--lr', default=1e-4, type=float, help='learning rate')
-    parser.add_argument('--mix_precision', default=True, type=bool, help='turn on mixed precision')
-    parser.add_argument('--gradient_accumulate_every', default=1, type=int, help='gradient accumulation steps')
-    parser.add_argument('--ema_decay', default=0.995, type=float, help='exponential moving average decay')
-    parser.add_argument('--inference_milestone', default='best', help='select milestone model for inference')
-    parser.add_argument('--denoise_timesteps', default=None, type=int, help='denoise step')
-    parser.add_argument('--num_workers', default=4, type=int, help='number of workers')
+    parser.add_argument('--data_cfg', help='config for file paths on this machine')
+    parser.add_argument('--experiment_cfg', default='DiffuEMG/cfg/default.yaml', help='experiment setting')
+    parser.add_argument('--train', action='store_true')
+    parser.add_argument('--test', action='store_true')
+    parser.add_argument('--sample', action='store_true')
+    parser.add_argument('--test_mismatch', action='store_true')
     main(parser.parse_args())

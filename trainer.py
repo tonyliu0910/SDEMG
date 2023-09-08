@@ -102,7 +102,7 @@ class Trainer1D(object):
 
         # prepare model, dataloader, optimizer with accelerator
 
-        self.lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.opt, factor=0.5, patience=2, verbose=True)
+        self.lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.opt, factor=0.5, patience=4, verbose=True)
 
         self.model, self.opt= self.accelerator.prepare(self.model, self.opt)
 
