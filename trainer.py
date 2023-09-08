@@ -314,7 +314,7 @@ class Trainer1D(object):
 
             
             ts = np.arange(0, self.model.num_timesteps+20, 10)
-            fig, ax = plt.subplots(nrows=ts.shape[0], ncols=4, figsize=(20, 3*ts.shape[0]))
+            fig, ax = plt.subplots(nrows=ts.shape[0], ncols=len(file_paths), figsize=(5*len(file_paths), 3*ts.shape[0]))
             fig.tight_layout()
 
             for idx, denoise_ts in enumerate(ts):

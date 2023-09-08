@@ -106,7 +106,7 @@ class PreNorm(nn.Module):
         return self.fn(x)
 
 class Attention(nn.Module):
-    def __init__(self, dim, heads = 4, dim_head = 32):
+    def __init__(self, dim, heads = 16, dim_head = 32):
         super().__init__()
         self.scale = dim_head ** -0.5
         self.heads = heads
