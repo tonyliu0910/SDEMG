@@ -1,4 +1,4 @@
-project_name: 'DF_10sec_EP40_SS50_cosine' 
+project_name: 'DF_10sec_EP40_SS50_larger' 
 train_epochs: 40
 batch_size: 64
 condition: True
@@ -13,4 +13,4 @@ mix_precision: False
 gradient_accumulate_every: 1
 ema_decay: 0.995
 inference_milestone: 'best'
-denoise_timesteps: None
+denoise_timesteps: 

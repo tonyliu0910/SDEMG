@@ -36,7 +36,7 @@ def main(args):
     #     self_condition = args.condition,
     # )
 
-    model = ConditionalModel(feats=64)
+    model = ConditionalModel(feats=128)
 
     diffusion = GaussianDiffusion1D(
         model,
@@ -77,16 +77,16 @@ def main(args):
 
     if args.sample:  
         print('sampling') 
-        file_paths = ['/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/0/16420/S1_E2_A1_ch9_0.npy',
-                        '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-2/16420/S1_E2_A1_ch9_1.npy',
-                        '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-4/16420/S1_E2_A1_ch9_2.npy',
-                        '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-6/16420/S1_E2_A1_ch9_3.npy',
-                        '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-8/16420/S1_E2_A1_ch9_4.npy',
-                        '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-10/16420/S1_E2_A1_ch9_5.npy',
-                        '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-12/16420/S1_E2_A1_ch9_6.npy',
-                        '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-14/16420/S1_E2_A1_ch9_7.npy',
-                        '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-4/16539/S1_E2_A1_ch9_8.npy',
-                        '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-10/16539/S1_E2_A1_ch9_9.npy']
+        file_paths = ['/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/0/16420/S1_E2_A1_ch9_0.npy',
+                        '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-2/16420/S1_E2_A1_ch9_1.npy',
+                        '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-4/16420/S1_E2_A1_ch9_2.npy',
+                        '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-6/16420/S1_E2_A1_ch9_3.npy',
+                        '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-8/16420/S1_E2_A1_ch9_4.npy',
+                        '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-10/16420/S1_E2_A1_ch9_5.npy',
+                        '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-12/16420/S1_E2_A1_ch9_6.npy',
+                        '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-14/16420/S1_E2_A1_ch9_7.npy',
+                        '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-4/16539/S1_E2_A1_ch9_8.npy',
+                        '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-10/16539/S1_E2_A1_ch9_9.npy']
         trainer.denoise_sample(file_paths, milestone=inference_milestone, ddim=exp_cfg['ddim'], denoise_timesteps=exp_cfg['denoise_timesteps'])
 
     if args.test_mismatch:
