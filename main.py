@@ -22,7 +22,7 @@ def main(args):
     train_path = file_cfg['train_dir']
     validation_path = file_cfg['valid_dir']
     result_path = os.path.join(file_cfg['result_dir'], exp_cfg['project_name'])
-    score_path = os.path.join(result_path, f"{exp_cfg['project_name']}.csv")
+    score_path = os.path.join(result_path, f"{exp_cfg['project_name']}_ch12.csv")
     ptb_score_path = os.path.join(result_path, f"{exp_cfg['project_name']}_ptb.csv")
     test_path = file_cfg['test_dir']
     
@@ -87,7 +87,7 @@ def main(args):
                         '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-14/16420/S1_E2_A1_ch9_7.npy',
                         '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-4/16539/S1_E2_A1_ch9_8.npy',
                         '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-10/16539/S1_E2_A1_ch9_9.npy']
-        trainer.denoise_sample(file_paths, milestone=inference_milestone, ddim=exp_cfg['ddim'], denoise_timesteps=exp_cfg['denoise_timesteps'])
+        trainer.denoise_sample(file_paths, milestone=inference_milestone, ddim=exp_cfg['ddim'], denoise_timesteps=exp_cfg['denoise_timesteps'], color='r')
 
     if args.test_mismatch:
         print('testing mismatch condition')

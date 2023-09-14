@@ -279,7 +279,7 @@ class Trainer1D(object):
         df_2 = pd.DataFrame.from_dict(dict_list)
         df_2.to_csv(self.score_path.replace('.csv', '_detail.csv'))
 
-    def denoise_sample(self, file_paths, milestone, ddim, denoise_timesteps=None):
+    def denoise_sample(self, file_paths, milestone, ddim, denoise_timesteps=None, color='coral'):
         accelerator = self.accelerator
         device = accelerator.device
 
@@ -310,12 +310,12 @@ class Trainer1D(object):
                 pred = pred.cpu().detach().numpy().squeeze().squeeze()
                 denoised_snr = cal_snr(clean_data, pred)
                 denoised_rmse = cal_rmse(clean_data, pred)
-                ax[row, col].plot(pred, color='coral')
+                ax[row, col].plot(pred, color=color)
                 ax[row, col].set_title(f"TS: {denoise_ts} SNRimp{denoised_snr - int(snr)} RMSE: {denoised_rmse}")
                 ax[row, col].set_ylim(-1, 1)
                 ax[row, col].set_xlim(0, 10000)
                 print(f"step {denoise_ts} sample done!")
-            fig.savefig(os.path.join(self.out_folder, f"denoise_ts_samples.png"))
+            fig.savefig(os.path.join(self.out_folder, f"denoise_ts_samples_{color}.png"))
             print(f"denoise_ts_samples saved to {self.out_folder}")
 
             
@@ -332,12 +332,12 @@ class Trainer1D(object):
                     clean_data = np.load(clean_file_name)
                     noisy_data = np.load(filepath)
                     if idx == 0:
-                        ax[idx, i].plot(clean_data, color='coral')
+                        ax[idx, i].plot(clean_data, color=color)
                         ax[idx, i].set_title(f"clean")
                         ax[idx, i].set_ylim(-1, 1)
                         ax[idx, i].set_xlim(0, 10000)
                     elif idx == len(ts) - 1:
-                        ax[idx, i].plot(noisy_data, color='coral')
+                        ax[idx, i].plot(noisy_data, color=color)
                         ax[idx, i].set_title(f"noisy {snr}")
                         ax[idx, i].set_ylim(-1, 1)
                         ax[idx, i].set_xlim(0, 10000)
@@ -350,7 +350,7 @@ class Trainer1D(object):
                         pred = pred.cpu().detach().numpy().squeeze().squeeze()
                         denoised_snr = cal_snr(clean_data, pred)
                         denoised_rmse = cal_rmse(clean_data, pred)
-                        ax[idx, i].plot(pred, color='coral')
+                        ax[idx, i].plot(pred, color=color)
                         if i == 0:
                             ax[idx, i].set_title(f"TS: {denoise_ts} SNR: {denoised_snr} RMSE: {denoised_rmse}")
                         else:
@@ -358,7 +358,7 @@ class Trainer1D(object):
                         ax[idx, i].set_ylim(-1, 1)
                         ax[idx, i].set_xlim(0, 10000)
                         print(f"step {denoise_ts} snr {snr} sample done!")
-            fig.savefig(os.path.join(self.out_folder, f"denoise_ts_snr_samples.png"))
+            fig.savefig(os.path.join(self.out_folder, f"denoise_ts_snr_samples_{color}.png"))
             print(f"denoise_ts_samples saved to {self.out_folder}")
 
             file_num = len(file_paths)
@@ -382,19 +382,19 @@ class Trainer1D(object):
                 denoised_snr = cal_snr(clean_data, pred)
                 denoised_rmse = cal_rmse(clean_data, pred)
 
-                ax[idx, 0].plot(clean_data, color='coral')
+                ax[idx, 0].plot(clean_data, color=color)
                 ax[idx, 0].set_title("Clean")
                 ax[idx, 0].set_ylim(-1, 1)
                 ax[idx, 0].set_xlim(0, 10000)
-                ax[idx, 1].plot(noisy_data, color='coral')
+                ax[idx, 1].plot(noisy_data, color=color)
                 ax[idx, 1].set_title(f"Noisy SNR: {snr}")
                 ax[idx, 1].set_ylim(-1, 1)
                 ax[idx, 1].set_xlim(0, 10000)
-                ax[idx, 2].plot(pred, color='coral')
+                ax[idx, 2].plot(pred, color=color)
                 ax[idx, 2].set_title(f"Denoised SNRimp: {denoised_snr - int(snr)} RMSE: {denoised_rmse}")
                 ax[idx, 2].set_ylim(-1, 1)
                 ax[idx, 2].set_xlim(0, 10000)
                 fig.suptitle(f"sEMG Denoising")
-                fig.savefig(os.path.join(self.out_folder, f"signal_comparison.png"))
+                fig.savefig(os.path.join(self.out_folder, f"signal_comparison_{color}.png"))
                 print(f"denoised file: signal_comparison.png saved to {self.out_folder}")
         

@@ -126,9 +126,9 @@ class EMGdata:
         self.valid_exercise = 3
         self.test_exercise = 2
 
-        self.train_channel = [2]
-        self.valid_channel = [2]
-        self.test_channel = [9]
+        self.train_channel = [3]
+        self.valid_channel = [3]
+        self.test_channel = [12]
 
         self.train_file_num = len(os.listdir(corpus_path))
         self.valid_file_num = 10
@@ -352,32 +352,32 @@ class PTB_data:
 
 
 if __name__ == '__main__':
-    # ecg_corpus_path = '/work/t22302856/Tony_data/mit-bih-normal-sinus-rhythm-database-1.0.0'
-    # ecg_train_path ='/work/t22302856/Tony_data/ECG_Ch1_fs1000_bp_training' # for training
-    # ecg_valid_path = '/work/t22302856/Tony_data/ECG_Ch1_fs1000_bp_validation' # for validation
-    # ecg_test_path ='/work/t22302856/Tony_data/ECG_Ch1_fs1000_bp_testing' # for testing
+    ecg_corpus_path = '/work/bigtony0910/mit-bih-normal-sinus-rhythm-database-1.0.0'
+    ecg_train_path ='/work/bigtony0910/ECG_Ch1_fs1000_bp_training' # for training
+    ecg_valid_path = '/work/bigtony0910/ECG_Ch1_fs1000_bp_validation' # for validation
+    ecg_test_path ='/work/bigtony0910/ECG_Ch1_fs1000_bp_testing' # for testing
 
-    # ecg_data = ECGdata(ecg_corpus_path, ecg_train_path, ecg_valid_path, ecg_test_path)
+    ecg_data = ECGdata(ecg_corpus_path, ecg_train_path, ecg_valid_path, ecg_test_path)
     # ecg_data.prepare()
     
-    # emg_corpus_path = '/work/t22302856/Tony_data/EMG_DB2'
-    # emg_train_path = '/work/t22302856/Tony_data/sEMG_Dataset/train'
-    # emg_valid_path = '/work/t22302856/Tony_data/sEMG_Dataset/valid'
-    # emg_test_path = '/work/t22302856/Tony_data/sEMG_Dataset/test'
-    # emg_data = EMGdata(emg_corpus_path, emg_train_path, emg_valid_path, emg_test_path, ecg_train_path, ecg_valid_path, ecg_test_path)
-    # emg_data.prepare()
-    # emg_data.mixture()
-
-    ptb_corpus_path = '/work/t22302856/Tony_data/ptbdb-1.0.0'
-    ptb_save_path = '/work/t22302856/Tony_data/PTB_Ch1_fs1000_bp'
-    ptb_data = PTB_data(ptb_corpus_path, ptb_save_path)
-    ptb_data.prepare()
-
-    emg_corpus_path = '/work/t22302856/Tony_data/EMG_DB2'
-    emg_train_path = '/work/t22302856/Tony_data/sEMG_Dataset_PTB/train'
-    emg_valid_path = '/work/t22302856/Tony_data/sEMG_Dataset_PTB/valid'
-    emg_test_path = '/work/t22302856/Tony_data/sEMG_Dataset_PTB/test'
-    emg_data = EMGdata(emg_corpus_path, emg_train_path, emg_valid_path, emg_test_path, ptb_save_path, ptb_save_path, ptb_save_path)
+    emg_corpus_path = '/work/bigtony0910/EMG_DB2'
+    emg_train_path = '/work/bigtony0910/sEMG_Dataset/train'
+    emg_valid_path = '/work/bigtony0910/sEMG_Dataset/valid'
+    emg_test_path = '/work/bigtony0910/sEMG_Dataset/test'
+    emg_data = EMGdata(emg_corpus_path, emg_train_path, emg_valid_path, emg_test_path, ecg_train_path, ecg_valid_path, ecg_test_path)
     emg_data.prepare()
     emg_data.mixture()
+
+    # ptb_corpus_path = '/work/bigtony0910/ptbdb-1.0.0'
+    # ptb_save_path = '/work/bigtony0910/PTB_Ch1_fs1000_bp'
+    # ptb_data = PTB_data(ptb_corpus_path, ptb_save_path)
+    # ptb_data.prepare()
+
+    # emg_corpus_path = '/work/bigtony0910/EMG_DB2'
+    # emg_train_path = '/work/bigtony0910/sEMG_Dataset_PTB/train'
+    # emg_valid_path = '/work/bigtony0910/sEMG_Dataset_PTB/valid'
+    # emg_test_path = '/work/bigtony0910/sEMG_Dataset_PTB/test'
+    # emg_data = EMGdata(emg_corpus_path, emg_train_path, emg_valid_path, emg_test_path, ptb_save_path, ptb_save_path, ptb_save_path)
+    # emg_data.prepare()
+    # emg_data.mixture()
 
