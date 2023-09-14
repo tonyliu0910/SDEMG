@@ -40,11 +40,10 @@ class ECGdata:
         self.test_file = []
         self.valid_file = []
 
-        self.train_file_num = 12
+        self.train_file_num = 10
         self.test_file_num = 3
         self.valid_file_num = 3
-
-        rand_list = random.sample(range(len(self.ecg_id)), self.test_file_num+self.valid_file_num)
+        rand_list = [16420, 16539, 16786, 17453, 18177, 19830]
         print(rand_list)
         for idx, id in enumerate(self.ecg_id):
             print(idx, id)
