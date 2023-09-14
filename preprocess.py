@@ -182,6 +182,7 @@ class EMGdata:
             check_path(self.train_path)
             check_path(os.path.join(self.train_path,'clean'))
             file_paths = self.get_emg_filepaths(self.corpus_path, self.train_file_num, self.train_exercise)
+            file_paths = file_paths[10:40]
             for i in tqdm(range(len(file_paths))):
                 save_path = os.path.join(self.train_path,'clean')
                 emg_file, restimulus = self.read_emg(file_paths[i], ch, test)     
@@ -194,6 +195,7 @@ class EMGdata:
             check_path(self.valid_path)
             check_path(os.path.join(self.valid_path,'clean'))
             file_paths = self.get_emg_filepaths(self.corpus_path, self.valid_file_num, self.valid_exercise)
+            file_paths = file_paths[10:40]
             for i in tqdm(range(len(file_paths))):
                 save_path = os.path.join(self.valid_path,'clean')
                 emg_file, restimulus = self.read_emg(file_paths[i], ch, test)     
@@ -208,6 +210,7 @@ class EMGdata:
             check_path(self.test_path)
             check_path(os.path.join(self.test_path,'clean'))
             file_paths = self.get_emg_filepaths(self.corpus_path, self.test_file_num, self.test_exercise)
+            file_paths = file_paths[:10]
             for i in tqdm(range(len(file_paths))):
                 save_path = os.path.join(self.test_path,'clean')
                 emg_file, restimulus = self.read_emg(file_paths[i], ch, test)     
