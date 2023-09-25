@@ -1,6 +1,6 @@
-project_name: 'DF_10sec_EP40_SS50_larger' 
+project_name: 'DiffuEMG_10sec_EP40_SS50' 
 train_epochs: 40
-batch_size: 64
+batch_size: 16
 condition: True
 sampling_steps: 50
 beta_schedule: 'cosine'

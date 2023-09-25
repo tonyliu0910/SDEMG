@@ -77,16 +77,7 @@ def main(args):
 
     if args.sample:  
         print('sampling') 
-        file_paths = ['/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/0/16420/S1_E2_A1_ch9_0.npy',
-                        '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-2/16420/S1_E2_A1_ch9_1.npy',
-                        '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-4/16420/S1_E2_A1_ch9_2.npy',
-                        '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-6/16420/S1_E2_A1_ch9_3.npy',
-                        '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-8/16420/S1_E2_A1_ch9_4.npy',
-                        '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-10/16420/S1_E2_A1_ch9_5.npy',
-                        '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-12/16420/S1_E2_A1_ch9_6.npy',
-                        '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-14/16420/S1_E2_A1_ch9_7.npy',
-                        '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-4/16539/S1_E2_A1_ch9_8.npy',
-                        '/work/bigtony0910/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd/noisy/-10/16539/S1_E2_A1_ch9_9.npy']
+        file_paths = ['demo file paths']
         trainer.denoise_sample(file_paths, milestone=inference_milestone, ddim=exp_cfg['ddim'], denoise_timesteps=exp_cfg['denoise_timesteps'], color='r')
 
     if args.test_mismatch:
@@ -99,7 +90,7 @@ def main(args):
 if __name__ == '__main__':
     parser = ArgumentParser(description='train (or resume training) a Diffusion model')
     parser.add_argument('--data_cfg', help='config for file paths on this machine')
-    parser.add_argument('--experiment_cfg', default='DiffuEMG/cfg/default.yaml', help='experiment setting')
+    parser.add_argument('--experiment_cfg', default='cfg/default.yaml', help='experiment setting')
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--test', action='store_true')
     parser.add_argument('--sample', action='store_true')

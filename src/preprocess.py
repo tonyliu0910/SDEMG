@@ -43,7 +43,7 @@ class ECGdata:
         self.train_file_num = 10
         self.test_file_num = 3
         self.valid_file_num = 3
-        rand_list = [16420, 16539, 16786, 17453, 18177, 19830]
+        rand_list = ['16420', '16539', '16786', '17453', '18177', '19830']
         print(rand_list)
         for idx, id in enumerate(self.ecg_id):
             print(idx, id)
@@ -194,7 +194,6 @@ class EMGdata:
             check_path(self.valid_path)
             check_path(os.path.join(self.valid_path,'clean'))
             file_paths = self.get_emg_filepaths(self.corpus_path, self.valid_file_num, self.valid_exercise)
-            file_paths = file_paths[10:40]
             for i in tqdm(range(len(file_paths))):
                 save_path = os.path.join(self.valid_path,'clean')
                 emg_file, restimulus = self.read_emg(file_paths[i], ch, test)     
@@ -209,7 +208,6 @@ class EMGdata:
             check_path(self.test_path)
             check_path(os.path.join(self.test_path,'clean'))
             file_paths = self.get_emg_filepaths(self.corpus_path, self.test_file_num, self.test_exercise)
-            file_paths = file_paths[:10]
             for i in tqdm(range(len(file_paths))):
                 save_path = os.path.join(self.test_path,'clean')
                 emg_file, restimulus = self.read_emg(file_paths[i], ch, test)     
@@ -370,16 +368,4 @@ if __name__ == '__main__':
     emg_data.prepare()
     emg_data.mixture()
 
-    # ptb_corpus_path = '/work/t22302856/Tony_data/ptbdb-1.0.0'
-    # ptb_save_path = '/work/t22302856/Tony_data/PTB_Ch1_fs1000_bp'
-    # ptb_data = PTB_data(ptb_corpus_path, ptb_save_path)
-    # ptb_data.prepare()
-
-    # emg_corpus_path = '/work/t22302856/Tony_data/EMG_DB2'
-    # emg_train_path = '/work/t22302856/Tony_data/sEMG_Dataset_PTB/train'
-    # emg_valid_path = '/work/t22302856/Tony_data/sEMG_Dataset_PTB/valid'
-    # emg_test_path = '/work/t22302856/Tony_data/sEMG_Dataset_PTB/test'
-    # emg_data = EMGdata(emg_corpus_path, emg_train_path, emg_valid_path, emg_test_path, ptb_save_path, ptb_save_path, ptb_save_path)
-    # emg_data.prepare()
-    # emg_data.mixture()
 

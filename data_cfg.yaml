@@ -1,0 +1,7 @@
+root_dir: '.'
+train_dir: '/work/t22302856/Tony_data/sEMG_Dataset/train_E1_S40_Ch2_withSTI_seg10s_nsrd'
+valid_dir: '/work/t22302856/Tony_data/sEMG_Dataset/valid_E3_S10_Ch2_withSTI_seg10s_nsrd'
+test_dir: '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd'
+mismatch_dir: '/work/t22302856/Tony_data/sEMG_Dataset_PTB/test_E2_S10_Ch9_withSTI_seg10s_nsrd'
+result_dir: '/work/t22302856/Tony_data/EMG_denoise'
+num_workers: 8
