@@ -346,14 +346,13 @@ class PTB_data:
             path = os.path.join(self.corpus_path, participant)
             filename = [i for i in os.listdir(path) if '.dat' in i][0]
             file = os.path.join(path, filename)
-            # print(file[:-4])
             signal = wfdb.rdsamp(record_name=file[:-4])[0][:,0]
             np.save(os.path.join(self.save_path, participant+'.npy'), signal)
 
 
 
 if __name__ == '__main__':
-    with open('data_cfg.yaml', "r") as f:
+    with open('cfg/data_cfg.yaml', "r") as f:
         file_cfg = yaml.safe_load(f)
     
     ecg_corpus_path = file_cfg['ECG_corpus_dir']
@@ -364,7 +363,7 @@ if __name__ == '__main__':
     ecg_test_path = os.path.join(ecg_path, 'ECG_Ch1_fs1000_bp_testing') # for testing
 
     ecg_data = ECGdata(ecg_corpus_path, ecg_train_path, ecg_valid_path, ecg_test_path)
-    # ecg_data.prepare()
+    ecg_data.prepare()
     
     emg_corpus_path = file_cfg['EMG_corpus_dir']
     emg_dataset = file_cfg['sEMG_dataset_dir']
@@ -372,7 +371,7 @@ if __name__ == '__main__':
     emg_valid_path = os.path.join(emg_dataset, 'valid')
     emg_test_path = os.path.join(emg_dataset, 'test')
     emg_data = EMGdata(emg_corpus_path, emg_train_path, emg_valid_path, emg_test_path, ecg_train_path, ecg_valid_path, ecg_test_path)
-    # emg_data.prepare()
-    # emg_data.mixture()
+    emg_data.prepare()
+    emg_data.mixture()
 
 

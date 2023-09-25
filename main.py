@@ -77,7 +77,7 @@ def main(args):
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='train (or resume training) a Diffusion model')
-    parser.add_argument('--data_cfg', default='data_cfg.yaml', help='config for file paths on this machine')
+    parser.add_argument('--data_cfg', default='cfg/data_cfg.yaml', help='config for file paths on this machine')
     parser.add_argument('--experiment_cfg', default='cfg/default.yaml', help='experiment setting')
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--test', action='store_true')
