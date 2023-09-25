@@ -9,6 +9,7 @@ import math
 import random
 import csv
 import scipy.io
+import yaml
 
 from utils import check_path, resample, get_filepaths
 
@@ -47,7 +48,7 @@ class ECGdata:
         print(rand_list)
         for idx, id in enumerate(self.ecg_id):
             print(idx, id)
-            if idx in rand_list:
+            if id in rand_list:
                 if len(self.test_id) < self.test_file_num:
                     self.test_id.append(id)
                     self.test_file.append(os.path.join(self.corpus_path, str(id)))
@@ -127,7 +128,7 @@ class EMGdata:
 
         self.train_channel = [2]
         self.valid_channel = [2]
-        self.test_channel = [12]
+        self.test_channel = [9]  # change to channel 9 ~ 12 for testing
 
         self.train_file_num = len(os.listdir(corpus_path))
         self.valid_file_num = 10
@@ -177,7 +178,7 @@ class EMGdata:
     def prepare(self):
         for ch in self.train_channel:
             test=False
-            self.train_path = f"{self.train_path}_E{self.train_exercise}_S{str(self.train_file_num)}_Ch{str(ch)}_withSTI_seg{self.segment}s_nsrd"
+            # self.train_path = f"{self.train_path}_E{self.train_exercise}_S{str(self.train_file_num)}_Ch{str(ch)}_withSTI_seg{self.segment}s_nsrd"
             check_path(self.train_path)
             check_path(os.path.join(self.train_path,'clean'))
             file_paths = self.get_emg_filepaths(self.corpus_path, self.train_file_num, self.train_exercise)
@@ -190,7 +191,7 @@ class EMGdata:
         
         for ch in self.valid_channel:
             test=False
-            self.valid_path = f"{self.valid_path}_E{self.valid_exercise}_S{str(self.valid_file_num)}_Ch{str(ch)}_withSTI_seg{self.segment}s_nsrd"
+            # self.valid_path = f"{self.valid_path}_E{self.valid_exercise}_S{str(self.valid_file_num)}_Ch{str(ch)}_withSTI_seg{self.segment}s_nsrd"
             check_path(self.valid_path)
             check_path(os.path.join(self.valid_path,'clean'))
             file_paths = self.get_emg_filepaths(self.corpus_path, self.valid_file_num, self.valid_exercise)
@@ -204,7 +205,7 @@ class EMGdata:
 
         for ch in self.test_channel:
             test=True
-            self.test_path = f"{self.test_path}_E{self.test_exercise}_S{str(self.test_file_num)}_Ch{str(ch)}_withSTI_seg{self.segment}s_nsrd"
+            # self.test_path = f"{self.test_path}_E{self.test_exercise}_S{str(self.test_file_num)}_Ch{str(ch)}_withSTI_seg{self.segment}s_nsrd"
             check_path(self.test_path)
             check_path(os.path.join(self.test_path,'clean'))
             file_paths = self.get_emg_filepaths(self.corpus_path, self.test_file_num, self.test_exercise)
@@ -352,20 +353,26 @@ class PTB_data:
 
 
 if __name__ == '__main__':
-    ecg_corpus_path = '/work/t22302856/Tony_data/mit-bih-normal-sinus-rhythm-database-1.0.0'
-    ecg_train_path ='/work/t22302856/Tony_data/ECG_Ch1_fs1000_bp_training' # for training
-    ecg_valid_path = '/work/t22302856/Tony_data/ECG_Ch1_fs1000_bp_validation' # for validation
-    ecg_test_path ='/work/t22302856/Tony_data/ECG_Ch1_fs1000_bp_testing' # for testing
+    with open('data_cfg.yaml', "r") as f:
+        file_cfg = yaml.safe_load(f)
+    
+    ecg_corpus_path = file_cfg['ECG_corpus_dir']
+    ecg_path = file_cfg['ECG_storage_dir']
+
+    ecg_train_path = os.path.join(ecg_path, 'ECG_Ch1_fs1000_bp_training') # for training
+    ecg_valid_path = os.path.join(ecg_path, 'ECG_Ch1_fs1000_bp_validation') # for validation
+    ecg_test_path = os.path.join(ecg_path, 'ECG_Ch1_fs1000_bp_testing') # for testing
 
     ecg_data = ECGdata(ecg_corpus_path, ecg_train_path, ecg_valid_path, ecg_test_path)
     # ecg_data.prepare()
     
-    emg_corpus_path = '/work/t22302856/Tony_data/EMG_DB2'
-    emg_train_path = '/work/t22302856/Tony_data/sEMG_Dataset/train'
-    emg_valid_path = '/work/t22302856/Tony_data/sEMG_Dataset/valid'
-    emg_test_path = '/work/t22302856/Tony_data/sEMG_Dataset/test'
+    emg_corpus_path = file_cfg['EMG_corpus_dir']
+    emg_dataset = file_cfg['sEMG_dataset_dir']
+    emg_train_path = os.path.join(emg_dataset, 'train')
+    emg_valid_path = os.path.join(emg_dataset, 'valid')
+    emg_test_path = os.path.join(emg_dataset, 'test')
     emg_data = EMGdata(emg_corpus_path, emg_train_path, emg_valid_path, emg_test_path, ecg_train_path, ecg_valid_path, ecg_test_path)
-    emg_data.prepare()
-    emg_data.mixture()
+    # emg_data.prepare()
+    # emg_data.mixture()
 
 

@@ -1,7 +1,6 @@
-root_dir: '.'
-train_dir: '/work/t22302856/Tony_data/sEMG_Dataset/train_E1_S40_Ch2_withSTI_seg10s_nsrd'
-valid_dir: '/work/t22302856/Tony_data/sEMG_Dataset/valid_E3_S10_Ch2_withSTI_seg10s_nsrd'
-test_dir: '/work/t22302856/Tony_data/sEMG_Dataset/test_E2_S10_Ch9_withSTI_seg10s_nsrd'
-mismatch_dir: '/work/t22302856/Tony_data/sEMG_Dataset_PTB/test_E2_S10_Ch9_withSTI_seg10s_nsrd'
+EMG_corpus_dir: '/work/t22302856/Tony_data/EMG_DB2'
+ECG_corpus_dir: '/work/t22302856/Tony_data/mit-bih-normal-sinus-rhythm-database-1.0.0'
+ECG_storage_dir: '/work/t22302856/Tony_data/TEST'
+sEMG_dataset_dir: '/work/t22302856/Tony_data/TEST/sEMG_Dataset'
 result_dir: '/work/t22302856/Tony_data/EMG_denoise'
 num_workers: 8

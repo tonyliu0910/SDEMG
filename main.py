@@ -5,9 +5,7 @@ import yaml
 from dataset import EMGDataset, EMGTestDataset
 from ddpm_1d import GaussianDiffusion1D
 from trainer import Trainer1D
-from model import Unet1D
 from deep_filter_model import ConditionalModel
-# from new_model import ConditionalModel
 from utils import default
 
 
@@ -19,22 +17,16 @@ def main(args):
 
     print(f"Running experiment {exp_cfg['project_name']}")
 
-    train_path = file_cfg['train_dir']
-    validation_path = file_cfg['valid_dir']
+    dataset_path = file_cfg['sEMG_dataset_dir']
+    train_path = os.path.join(dataset_path, 'train')
+    validation_path = os.path.join(dataset_path, 'valid')
+    test_path = os.path.join(dataset_path, 'test')
     result_path = os.path.join(file_cfg['result_dir'], exp_cfg['project_name'])
     score_path = os.path.join(result_path, f"{exp_cfg['project_name']}_ch12.csv")
-    ptb_score_path = os.path.join(result_path, f"{exp_cfg['project_name']}_ptb.csv")
-    test_path = file_cfg['test_dir']
+
     
     train_dataset = EMGDataset(train_path)
     validation_dataset = EMGDataset(validation_path)
-    # print(f"dataset sample shape: {dataset[0].shape}")
-    # model = Unet1D(
-    #     dim = 64,
-    #     dim_mults = (1, 2, 4, 8),
-    #     channels = 1,
-    #     self_condition = args.condition,
-    # )
 
     model = ConditionalModel(feats=128)
 
@@ -80,16 +72,12 @@ def main(args):
         file_paths = ['demo file paths']
         trainer.denoise_sample(file_paths, milestone=inference_milestone, ddim=exp_cfg['ddim'], denoise_timesteps=exp_cfg['denoise_timesteps'], color='r')
 
-    if args.test_mismatch:
-        print('testing mismatch condition')
-        mismatch_dataset = EMGTestDataset(file_cfg['mismatch_dir'])
-        trainer.test(mismatch_dataset, ptb_score_path, milestone=inference_milestone, ddim=exp_cfg['ddim'], denoise_timesteps=exp_cfg['denoise_timesteps'])
 
 
 
 if __name__ == '__main__':
     parser = ArgumentParser(description='train (or resume training) a Diffusion model')
-    parser.add_argument('--data_cfg', help='config for file paths on this machine')
+    parser.add_argument('--data_cfg', default='data_cfg.yaml', help='config for file paths on this machine')
     parser.add_argument('--experiment_cfg', default='cfg/default.yaml', help='experiment setting')
     parser.add_argument('--train', action='store_true')
     parser.add_argument('--test', action='store_true')

@@ -4,7 +4,6 @@ from argparse import ArgumentParser
 from dataset import EMGDataset, EMGTestDataset
 from ddpm_1d import GaussianDiffusion1D
 from trainer import Trainer1D
-from model import Unet1D
 from deep_filter_model import ConditionalModel
 from utils import default
 
