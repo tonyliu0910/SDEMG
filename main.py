@@ -69,7 +69,7 @@ def main(args):
 
     if args.sample:  
         print('sampling') 
-        file_paths = ['demo file paths']
+        file_paths = ['demo file paths'] # path to your inference files
         trainer.denoise_sample(file_paths, milestone=inference_milestone, ddim=exp_cfg['ddim'], denoise_timesteps=exp_cfg['denoise_timesteps'], color='r')
 
 
