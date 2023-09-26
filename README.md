@@ -38,7 +38,7 @@ We use the surface electromyography signals from [Non-Invasive Adaptive Prosthet
 |   |-- S2_E1_A1.mat
 |   |-- S2_E2_A1.mat
 |   `-- S2_E3_A1.mat
-|-- ...
+...
 ```
 ### Download the ECG signals 
 The ECG signals for simulating interference can be downloaded from [MIT-BIH Normal Sinus Rhythm Database](https://www.physionet.org/content/nsrdb/1.0.0/). You should specify the path to the folder containing all signals for the later implementation.
@@ -52,7 +52,7 @@ The ECG signals for simulating interference can be downloaded from [MIT-BIH Norm
 |-- 16272.dat
 |-- 16272.hea
 |-- 16272.xws
-|-- ...
+...
 ```
 ### Prepare the config file
 You can specify the paths to the corresponding directorires in the `data_cfg.yaml` in `/cfg`. Note that the `ECG_storage_dir` is the directory you would like to store the process ECG signals, the `sEMG_dataset_dir` is the directory to the dataset for later use, and the `result_dir` is the directory for your experiment results.
