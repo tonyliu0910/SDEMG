@@ -95,3 +95,6 @@ python main.py --sample
 ```
 
 ## Citing our work
+
+## Acknowledgement
+SDEMG framework is adapted from [denoising-diffusion-pytorch](https://github.com/lucidrains/denoising-diffusion-pytorch) and [DeScoD-ECG](https://github.com/HuayuLiArizona/Score-based-ECG-Denoising).
