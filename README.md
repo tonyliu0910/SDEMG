@@ -1,11 +1,13 @@
 # SDEMG
 This repository provides the source code for the implementation of "SDEMG: Scored-Based Diffusion Model for Surface Electromyographic Signal Denoising". 
+
 <p align='center'>
 <td style='text-align:center;'>
   <img src=https://github.com/tonyliu0910/DiffuEMG/assets/71209514/995afbd0-98b8-442a-92aa-cec988d289cb width="700" height="200">
   <figcaption>Fig. 1 (a) clean sEMG signal (b) sEMG with ECG interference (c) denoised sEMG output from SDEMG</figcaption>
 </td>
 </p>
+
 We developed this repo with `python=3.8.5` and `pytorch=1.10.1`. You can reproduce our experiment by following the steps:
 - Construct The Environment
 - Prepare The Dataset
