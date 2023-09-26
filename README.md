@@ -15,18 +15,18 @@ We developed this repo with `python=3.8.5` and `pytorch=1.10.1`. You can reprodu
 - Run Testing
 
 ## Construct The Environment
-1. Clone the repository
+### Clone the repository
 Clone our repository by running the folling command and enter the directory. This will be your working directory.
 ```
 git clone https://github.com/tonyliu0910/DiffuEMG.git
 cd DiffuEMG
 ```
-2. Install the Python packages
+### Install the Python packages
 ```
 pip install -r requirements.txt
 ```
 ## Prepare The Dataset
-1. Download the sEMG signals
+### Download the sEMG signals
 We use the surface electromyography signals from [Non-Invasive Adaptive Prosthetics (NINAPro)](https://ninapro.hevs.ch/instructions/DB2.html) DB2. The website doesn't provide an all-in-one compressed file of the database, so you might need to download datas from every subject seperately and unpack them to 1 folder shown as follows:
 ```
 [EMG_corpus_dir]
@@ -40,7 +40,7 @@ We use the surface electromyography signals from [Non-Invasive Adaptive Prosthet
 |   `-- S2_E3_A1.mat
 |-- ...
 ```
-2. Download the ECG signals 
+### Download the ECG signals 
 The ECG signals for simulating interference can be downloaded from [MIT-BIH Normal Sinus Rhythm Database](https://www.physionet.org/content/nsrdb/1.0.0/). You should specify the path to the folder containing all signals for the later implementation.
 ```
 [ECG_corpus_dir]
@@ -54,7 +54,7 @@ The ECG signals for simulating interference can be downloaded from [MIT-BIH Norm
 |-- 16272.xws
 |-- ...
 ```
-3. Prepare the config file
+### Prepare the config file
 You can specify the paths to the corresponding directorires in the `data_cfg.yaml` in `/cfg`. Note that the `ECG_storage_dir` is the directory you would like to store the process ECG signals, the `sEMG_dataset_dir` is the directory to the dataset for later use, and the `result_dir` is the directory for your experiment results.
 ```
 EMG_corpus_dir: [directory to downloaded NINAPro DB2]
@@ -63,7 +63,7 @@ ECG_storage_dir: [directory to store ECG for simulating interference]
 sEMG_dataset_dir: [sEMG dataset directory]
 result_dir: [your result directory]
 ```
-4. Data preprocessing
+### Data preprocessing
 To preprocess all downloaded data and prepare the dataset, you need to run the following after you have specified all paths in the `data_cfg.yaml`.
 ```
 python preprocess.py
