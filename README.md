@@ -18,7 +18,7 @@ We developed this repo with `python=3.8.5` and `pytorch=1.10.1`. You can reprodu
 ### Clone the repository
 Clone our repository by running the following command and enter the directory. This will be your working directory.
 ```
-git clone https://github.com/tonyliu0910/DiffuEMG.git
+git clone https://github.com/tonyliu0910/SDEMG.git
 cd DiffuEMG
 ```
 ### Install the Python packages
