@@ -4,8 +4,6 @@ This repository provides the source code for the implementation of "SDEMG: Score
 <p align='center'>
 <td style='text-align:center;'>
   <img src=https://github.com/tonyliu0910/SDEMG/assets/71209514/585e50df-2d14-4b7b-ae64-9582cfb50f11 >
-
-  <figcaption>Fig. 1 (a) clean sEMG signal (b) sEMG with ECG interference (c) denoised sEMG output from SDEMG</figcaption>
 </td>
 </p>
 
