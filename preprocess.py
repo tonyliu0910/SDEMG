@@ -85,7 +85,7 @@ class ECGdata:
             ecg_file = self.read_ecg(file_path)
             if ecg_file.ndim>1:
                 for j in range(ecg_file.shape[1]):
-                    ecg_save = sig.filtfilt(b_l, a_l, sig.filtfilt(h_h, a_h, ecg_file[start:end, j]))
+                    ecg_save = sig.filtfilt(b_l, a_l, sig.filtfilt(b_h, a_h, ecg_file[start:end, j]))
                     np.save(os.path.join(self.train_path, os.path.basename(file_path).split(".")[0] + str(j)), ecg_save)
             else:
                 ecg_file = sig.filtfilt(b_l, a_l, sig.filtfilt(b_h, a_h, ecg_file[start:end]))
@@ -99,7 +99,7 @@ class ECGdata:
             ecg_file = self.read_ecg(file_path)
             if ecg_file.ndim>1:
                 for j in range(ecg_file.shape[1]):
-                    ecg_save = sig.filtfilt(b_l, a_l, sig.filtfilt(h_h, a_h, ecg_file[start:end, j]))
+                    ecg_save = sig.filtfilt(b_l, a_l, sig.filtfilt(b_h, a_h, ecg_file[start:end, j]))
                     np.save(os.path.join(self.valid_path, os.path.basename(file_path).split(".")[0] + str(j)), ecg_save)
             else:
                 ecg_file = sig.filtfilt(b_l, a_l, sig.filtfilt(b_h, a_h, ecg_file[start:end]))
@@ -113,7 +113,7 @@ class ECGdata:
             ecg_file = self.read_ecg(file_path)
             if ecg_file.ndim>1:
                 for j in range(ecg_file.shape[1]):
-                    ecg_save = sig.filtfilt(b_l, a_l, sig.filtfilt(h_h, a_h, ecg_file[start:end, j]))
+                    ecg_save = sig.filtfilt(b_l, a_l, sig.filtfilt(b_h, a_h, ecg_file[start:end, j]))
                     np.save(os.path.join(self.test_path, os.path.basename(file_path).split(".")[0] + str(j)), ecg_save)
             else:
                 ecg_file = sig.filtfilt(b_l, a_l, sig.filtfilt(b_h, a_h, ecg_file[start:end]))
