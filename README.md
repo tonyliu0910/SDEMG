@@ -94,7 +94,7 @@ python main.py --sample
 ```
 
 ## Citing our work
-Liu, Yu-Tung, et al. "SDEMG: Score-based Diffusion Model for Surface Electromyographic Signal Denoising." arXiv preprint arXiv:2402.03808 (2024).
+Liu, Y.T., Wang, K.C., Liu, K.C., Peng, S.Y. and Tsao, Y., 2024. SDEMG: Score-based Diffusion Model for Surface Electromyographic Signal Denoising. arXiv preprint arXiv:2402.03808.
 ## Acknowledgement
 <details>
   <summary>Expand</summary>
