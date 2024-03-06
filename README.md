@@ -15,7 +15,7 @@ We developed this repo with `python=3.8.5` and `pytorch=1.10.1`. You can reprodu
 
 ## Construct The Environment
 ### Clone the repository
-Clone our repository by running the following command and enter the directory. This will be your working directory.
+Clone our repository by running the following command and entering the directory. This will be your working directory.
 ```
 git clone https://github.com/tonyliu0910/SDEMG.git
 cd DiffuEMG
@@ -26,7 +26,7 @@ pip install -r requirements.txt
 ```
 ## Prepare The Dataset
 ### Download the sEMG signals
-We use the surface electromyography signals from [Non-Invasive Adaptive Prosthetics (NINAPro)](https://ninapro.hevs.ch/instructions/DB2.html) DB2. The website doesn't provide an all-in-one compressed file of the database, so you might need to download datas from every subject seperately and unpack them to 1 folder shown as follows:
+We use the surface electromyography signals from [Non-Invasive Adaptive Prosthetics (NINAPro)](https://ninapro.hevs.ch/instructions/DB2.html) DB2. The website doesn't provide an all-in-one compressed file of the database, so you might need to download data points from every subjects separately and unpack them into 1 folder shown as follows:
 ```
 [EMG_corpus_dir]
 |-- DB2_s1
@@ -54,7 +54,7 @@ The ECG signals for simulating interference can be downloaded from [MIT-BIH Norm
 ...
 ```
 ### Prepare the config file
-You can specify the paths to the corresponding directorires in the `data_cfg.yaml` in `/cfg`. Note that the `ECG_storage_dir` is the directory you would like to store the process ECG signals, the `sEMG_dataset_dir` is the directory to the dataset for later use, and the `result_dir` is the directory for your experiment results.
+You can specify the paths to the corresponding directories in the `data_cfg.yaml` in `/cfg`. Note that the `ECG_storage_dir` is the directory you would like to store the process ECG signals, the `sEMG_dataset_dir` is the directory to the dataset for later use, and the `result_dir` is the directory for your experiment results.
 ```
 EMG_corpus_dir: [directory to downloaded NINAPro DB2]
 ECG_corpus_dir: [directory to downloaded MIT-BIH NSRD]
@@ -68,18 +68,18 @@ To preprocess all downloaded data and prepare the dataset, you need to run the f
 python preprocess.py
 ```
 ## Run Training
-You need to train SDEMG before you perform denoising. You can train SDEMG by single GPU or multiple GPUs. Note that you can specify the number of workers in `data_cfg.yaml`, the recommended number is half of your CPU cores on your device. Also adjust the experiment setting and the hyperparameters (e.g. batch size) in `cfg/default.yaml`
+You need to train SDEMG before you perform denoising. You can train SDEMG on a single GPU or multiple GPUs. Note that you can specify the number of workers in `data_cfg.yaml`, the recommended number is half of your CPU cores on your device. Also, adjust the experiment setting and the hyperparameters (e.g. batch size) in `cfg/default.yaml`
 ### Single GPU Training
 ```
 python main.py --train
 ```
-### Multiple GPUs Training
-SDEMG supports multiple GPUs training with [Hugging Face Accelerate](https://huggingface.co/docs/accelerate/index). You need to install `accelerate` by running `pip install accelerate` and adjust the configuration for your device by running `accelerate config`. 
+### Multiple GPU Training
+SDEMG supports multiple GPU training with [Hugging Face Accelerate](https://huggingface.co/docs/accelerate/index). You need to install `accelerate` by running `pip install accelerate` and adjust the configuration for your device by running `accelerate config`. 
 ```
 accelerate launch main.py --train
 ```
 ## Run Testing
-You can run testing and found the denoise result in your project directory. 
+You can run testing and find the denoise result in your project directory. 
 ```
 python main.py --test
 ```
@@ -88,7 +88,7 @@ You can fill in the path to the files you would like to run inference in `line 7
 ```
 72      file_paths = ['demo file paths']
 ```
-SDEMG will run single inference on the files.
+SDEMG will run a single inference on the files.
 ```
 python main.py --sample
 ```
