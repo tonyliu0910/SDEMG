@@ -94,7 +94,7 @@ python main.py --sample
 ```
 
 ## Citing our work
-Liu, Y.T., Wang, K.C., Liu, K.C., Peng, S.Y. and Tsao, Y., 2024. SDEMG: Score-based Diffusion Model for Surface Electromyographic Signal Denoising. arXiv preprint arXiv:2402.03808.
+Y. -T. Liu, K. -C. Wang, K. -C. Liu, S. -Y. Peng and Y. Tsao, "SDEMG: Score-Based Diffusion Model for Surface Electromyographic Signal Denoising," ICASSP 2024 - 2024 IEEE International Conference on Acoustics, Speech and Signal Processing (ICASSP), Seoul, Korea, Republic of, 2024, pp. 1736-1740, doi: 10.1109/ICASSP48485.2024.10446154.
 ## Acknowledgement
 <details>
   <summary>Expand</summary>
